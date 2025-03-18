@@ -1,103 +1,440 @@
-import Image from "next/image";
+'use client';
+
+import { useEffect, useState } from 'react';
+import { Enquiry, DashboardStats } from './types';
+import { getEnquiries } from './utils/localStorage';
+import { useInitializeData } from './utils/initializeData';
+import SearchBar from './components/SearchBar';
+import StatusBadge from './components/StatusBadge';
+import Link from 'next/link';
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  useInitializeData();
+  
+  const [stats, setStats] = useState<DashboardStats>({
+    newEnquiries: 0,
+    totalEnquiries: 0,
+    pendingSiteVisits: 0,
+    successfulDeals: 0
+  });
+  
+  const [categorizedEnquiries, setCategorizedEnquiries] = useState<{
+    new: Enquiry[],
+    today: Enquiry[],
+    yesterday: Enquiry[],
+    due: Enquiry[],
+    weekend: Enquiry[]
+  }>({
+    new: [],
+    today: [],
+    yesterday: [],
+    due: [],
+    weekend: []
+  });
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
+  const [activities, setActivities] = useState<{
+    title: string;
+    description: string;
+    time: string;
+    icon: 'document' | 'calendar' | 'folder' | 'currency';
+  }[]>([]);
+
+  const [isLoading, setIsLoading] = useState(true);
+  
+  // Load data from localStorage
+  useEffect(() => {
+    const enquiries = getEnquiries();
+    
+    // Calculate statistics
+    const newEnquiries = enquiries.filter(e => e.status === 'new').length;
+    const totalEnquiries = enquiries.length;
+    
+    // For demo purposes, we'll use static numbers for site visits and deals
+    const pendingSiteVisits = 8;
+    const successfulDeals = 5;
+    
+    setStats({
+      newEnquiries,
+      totalEnquiries,
+      pendingSiteVisits,
+      successfulDeals
+    });
+    
+    // Categorize enquiries
+    const categorized = {
+      new: enquiries.filter(e => e.category === 'new'),
+      today: enquiries.filter(e => e.category === 'today'),
+      yesterday: enquiries.filter(e => e.category === 'yesterday'),
+      due: enquiries.filter(e => e.category === 'due'),
+      weekend: enquiries.filter(e => e.category === 'weekend')
+    };
+    
+    setCategorizedEnquiries(categorized);
+
+    // Create sample activities
+    setActivities([
+      {
+        title: "New Enquiry Added",
+        description: "Raj Sharma - 2BHK in downtown area",
+        time: "Just now",
+        icon: "document"
+      },
+      {
+        title: "Site Visit Scheduled",
+        description: "Priya Patel - For 3BHK with garden",
+        time: "2 hours ago",
+        icon: "calendar"
+      },
+      {
+        title: "Property Listed",
+        description: "New 4BHK Luxury Apartment in City Center",
+        time: "Yesterday",
+        icon: "folder"
+      },
+      {
+        title: "Deal Closed",
+        description: "Amit Singh - 1BHK for ₹25,00,000",
+        time: "2 days ago",
+        icon: "currency"
+      }
+    ]);
+
+    // Simulate loading for UI polish
+    setTimeout(() => setIsLoading(false), 500);
+  }, []);
+
+  const handleSearch = (query: string) => {
+    console.log('Searching for:', query);
+    // In a real app, this would filter data or redirect to a search results page
+  };
+
+  return (
+    <div className="fade-in">
+      {/* Premium Hero Section */}
+      <div className="relative mb-12">
+        <div className="absolute inset-0 bg-gradient-to-r from-[#1a2e29]/90 to-[#264a42]/90 rounded-2xl -z-10"></div>
+        <div className="absolute inset-0 bg-[url('/hero-pattern.svg')] opacity-10 mix-blend-overlay rounded-2xl -z-10"></div>
+        
+        <div className="relative py-14 px-8 text-center">
+          <h1 className="text-4xl md:text-5xl font-bold text-white mb-3">
+            Welcome to <span className="text-[#c69c6d]">Space Oracle CRM</span>
+          </h1>
+          <p className="text-[#e5d0b1] text-lg md:text-xl max-w-3xl mx-auto mb-10">
+            The premium real estate management platform where exceptional spaces meet exceptional service
+          </p>
+          
+          <div className="max-w-2xl mx-auto">
+            <SearchBar 
+              onSearch={handleSearch} 
+              placeholder="Search properties, clients, or enquiries..." 
             />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      </div>
+      
+      {/* Dashboard Content */}
+      {isLoading ? (
+        <div className="flex justify-center items-center py-24">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#c69c6d]"></div>
+        </div>
+      ) : (
+        <div className="space-y-10">
+          {/* Quick Stats */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <StatCard 
+              title="New Enquiries" 
+              value={stats.newEnquiries}
+              icon={<NewIcon />}
+              href="/enquiry/list"
+              color="blue"
+            />
+            <StatCard 
+              title="Total Enquiries" 
+              value={stats.totalEnquiries}
+              icon={<DocumentIcon />}
+              href="/enquiry/list"
+              color="green"
+            />
+            <StatCard 
+              title="Pending Site Visits" 
+              value={stats.pendingSiteVisits}
+              icon={<CalendarIcon />}
+              href="/site-visits"
+              color="purple"
+            />
+            <StatCard 
+              title="Successful Deals" 
+              value={stats.successfulDeals}
+              icon={<CurrencyIcon />}
+              href="#"
+              color="gold"
+            />
+          </div>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-2 space-y-6">
+              {/* Categorized Enquiries */}
+              <h2 className="text-2xl font-bold text-gray-800 dark:text-white flex items-center">
+                <span className="inline-block w-1.5 h-5 bg-[#c69c6d] rounded-full mr-2"></span>
+                Enquiries by Category
+              </h2>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+                <CategoryCard 
+                  title="New" 
+                  count={categorizedEnquiries.new.length}
+                  icon={<NewIcon />}
+                  enquiries={categorizedEnquiries.new}
+                  colorClass="from-blue-500/20 to-blue-600/20 border-blue-200 dark:border-blue-800/30"
+                />
+                <CategoryCard 
+                  title="Today" 
+                  count={categorizedEnquiries.today.length}
+                  icon={<TodayIcon />}
+                  enquiries={categorizedEnquiries.today}
+                  colorClass="from-green-500/20 to-green-600/20 border-green-200 dark:border-green-800/30"
+                />
+                <CategoryCard 
+                  title="Due" 
+                  count={categorizedEnquiries.due.length}
+                  icon={<DueIcon />}
+                  enquiries={categorizedEnquiries.due}
+                  colorClass="from-orange-500/20 to-orange-600/20 border-orange-200 dark:border-orange-800/30"
+                />
+              </div>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <CategoryCard 
+                  title="Yesterday" 
+                  count={categorizedEnquiries.yesterday.length}
+                  icon={<YesterdayIcon />}
+                  enquiries={categorizedEnquiries.yesterday}
+                  colorClass="from-purple-500/20 to-purple-600/20 border-purple-200 dark:border-purple-800/30"
+                />
+                <CategoryCard 
+                  title="Weekend" 
+                  count={categorizedEnquiries.weekend.length}
+                  icon={<WeekendIcon />}
+                  enquiries={categorizedEnquiries.weekend}
+                  colorClass="from-amber-500/20 to-amber-600/20 border-amber-200 dark:border-amber-800/30"
+                />
+              </div>
+            </div>
+            
+            {/* Activity Summary */}
+            <div className="space-y-6">
+              <h2 className="text-2xl font-bold text-gray-800 dark:text-white flex items-center">
+                <span className="inline-block w-1.5 h-5 bg-[#c69c6d] rounded-full mr-2"></span>
+                Recent Activity
+              </h2>
+              
+              <div className="premium-card p-6">
+                <div className="space-y-5">
+                  {activities.map((activity, idx) => (
+                    <ActivityItem 
+                      key={idx}
+                      title={activity.title}
+                      description={activity.description}
+                      time={activity.time}
+                      icon={
+                        activity.icon === 'document' ? <DocumentIcon /> : 
+                        activity.icon === 'calendar' ? <CalendarIcon /> : 
+                        activity.icon === 'folder' ? <FolderIcon /> : 
+                        <CurrencyIcon />
+                      }
+                    />
+                  ))}
+                </div>
+              </div>
+              
+              {/* Quick Actions */}
+              <div className="premium-card p-6">
+                <h3 className="text-lg font-bold mb-3 text-gray-800 dark:text-white">Quick Actions</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <Link href="/enquiry/new" className="premium-button-accent text-center">
+                    Add Enquiry
+                  </Link>
+                  <Link href="/site-visits" className="premium-button text-center">
+                    Schedule Visit
+                  </Link>
+                  <Link href="/enquiry/list" className="premium-button text-center">
+                    View Enquiries
+                  </Link>
+                  <Link href="/enquiry/portal" className="premium-button-accent text-center">
+                    Portal Enquiries
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
+const StatCard = ({ title, value, icon, href, color = 'default' }: { 
+  title: string; 
+  value: number; 
+  icon: React.ReactNode; 
+  href?: string;
+  color?: 'blue' | 'green' | 'purple' | 'gold' | 'default';
+}) => {
+  const getColorClass = () => {
+    switch(color) {
+      case 'blue':
+        return 'bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-blue-100 dark:border-blue-800/30';
+      case 'green':
+        return 'bg-gradient-to-br from-green-50 to-teal-50 dark:from-green-900/20 dark:to-teal-900/20 border-green-100 dark:border-green-800/30';
+      case 'purple':
+        return 'bg-gradient-to-br from-purple-50 to-violet-50 dark:from-purple-900/20 dark:to-violet-900/20 border-purple-100 dark:border-purple-800/30';
+      case 'gold':
+        return 'bg-gradient-to-br from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/20 border-amber-100 dark:border-amber-800/30';
+      default:
+        return 'bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900/20 dark:to-gray-800/20 border-gray-100 dark:border-gray-800/30';
+    }
+  };
+
+  return (
+    <Link href={href || '#'} className="block">
+      <div className={`p-6 rounded-xl border transition-transform duration-300 hover:scale-105 hover:shadow-md ${getColorClass()}`}>
+        <div className="flex items-center gap-4">
+          <div className="h-14 w-14 rounded-full bg-white/70 dark:bg-gray-800/70 flex items-center justify-center text-[#c69c6d]">
+            {icon}
+          </div>
+          <div>
+            <div className="text-sm text-gray-500 dark:text-gray-400">{title}</div>
+            <div className="text-3xl font-bold text-gray-900 dark:text-white">{value}</div>
+          </div>
+        </div>
+      </div>
+    </Link>
+  );
+};
+
+const CategoryCard = ({ title, count, icon, enquiries, colorClass }: { 
+  title: string; 
+  count: number; 
+  icon: React.ReactNode; 
+  enquiries: Enquiry[];
+  colorClass: string;
+}) => {
+  return (
+    <div className={`premium-card overflow-hidden border transition-all hover:shadow-md ${colorClass}`}>
+      <div className="p-5">
+        <div className="flex justify-between items-center mb-4">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-full bg-white/70 dark:bg-gray-800/70 flex items-center justify-center text-gray-700 dark:text-gray-300">
+              {icon}
+            </div>
+            <div>
+              <div className="text-lg font-bold text-gray-800 dark:text-white">{title}</div>
+              <div className="text-xs text-gray-500 dark:text-gray-400">{count} Enquiries</div>
+            </div>
+          </div>
+        </div>
+        
+        <div className="space-y-3 mb-4">
+          {enquiries.slice(0, 2).map(enquiry => (
+            <div key={enquiry.id} className="p-2 rounded-lg bg-white/70 dark:bg-gray-800/70">
+              <div className="font-medium text-gray-800 dark:text-white truncate">{enquiry.clientName}</div>
+              <div className="flex justify-between items-center mt-1">
+                <div className="text-xs text-gray-500 dark:text-gray-400">{enquiry.configuration}</div>
+                <StatusBadge status={enquiry.status} type="enquiry" />
+              </div>
+            </div>
+          ))}
+          
+          {count === 0 && (
+            <div className="text-center py-4 text-gray-500 dark:text-gray-400 text-sm">
+              No enquiries in this category
+            </div>
+          )}
+        </div>
+        
+        {count > 2 && (
+          <Link 
+            href="/enquiry/list" 
+            className="text-xs text-[#1a2e29] dark:text-[#c69c6d] font-medium hover:underline block text-center"
+          >
+            View all {count} enquiries
+          </Link>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const ActivityItem = ({ title, description, time, icon }: {
+  title: string;
+  description: string;
+  time: string;
+  icon: React.ReactNode;
+}) => {
+  return (
+    <div className="flex gap-4">
+      <div className="h-10 w-10 rounded-full bg-[#1a2e29]/10 dark:bg-[#c69c6d]/10 flex items-center justify-center text-[#1a2e29] dark:text-[#c69c6d] shrink-0">
+        {icon}
+      </div>
+      <div className="flex-1 border-b border-gray-100 dark:border-gray-800 pb-4">
+        <div className="font-medium text-gray-800 dark:text-white">{title}</div>
+        <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">{description}</div>
+        <div className="text-xs text-gray-400 dark:text-gray-500 mt-1">{time}</div>
+      </div>
+    </div>
+  );
+};
+
+const DocumentIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+  </svg>
+);
+
+const CalendarIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+  </svg>
+);
+
+const FolderIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+  </svg>
+);
+
+const CurrencyIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+  </svg>
+);
+
+const NewIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+  </svg>
+);
+
+const TodayIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+  </svg>
+);
+
+const YesterdayIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+  </svg>
+);
+
+const DueIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+  </svg>
+);
+
+const WeekendIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+  </svg>
+);
