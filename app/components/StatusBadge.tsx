@@ -2,10 +2,9 @@
 
 interface StatusBadgeProps {
   status: 'active' | 'inactive' | 'new' | 'completed' | 'pending' | 'due' | 'success' | 'cancelled';
-  type?: 'enquiry' | 'visit' | 'deal';
 }
 
-export default function StatusBadge({ status, type = 'enquiry' }: StatusBadgeProps) {
+export default function StatusBadge({ status }: StatusBadgeProps) {
   const getColorClass = () => {
     switch (status) {
       case 'active':

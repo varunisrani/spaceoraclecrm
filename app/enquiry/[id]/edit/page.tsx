@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '../../../utils/supabase';
@@ -24,11 +24,7 @@ export default function EditEnquiry({ params }: { params: { id: string } }) {
     "Created Date": ''
   });
 
-  useEffect(() => {
-    fetchEnquiry();
-  }, [params.id]);
-
-  const fetchEnquiry = async () => {
+  const fetchEnquiry = useCallback(async () => {
     try {
       setIsLoading(true);
       const { data, error } = await supabase
@@ -45,7 +41,11 @@ export default function EditEnquiry({ params }: { params: { id: string } }) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [params.id]);
+
+  useEffect(() => {
+    fetchEnquiry();
+  }, [fetchEnquiry]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

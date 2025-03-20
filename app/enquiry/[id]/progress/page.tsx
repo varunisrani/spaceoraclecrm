@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useCallback } from 'react';
 import Link from 'next/link';
 import { supabase } from '../../../utils/supabase';
 import InquiryProgressForm from '../../../components/InquiryProgressForm';
@@ -72,7 +72,7 @@ export default function InquiryProgressPage({ params }: PageParams) {
   const [showAddProgress, setShowAddProgress] = React.useState(false);
   const [inquiryData, setInquiryData] = React.useState<InquiryData | null>(null);
 
-  const fetchInquiryData = async () => {
+  const fetchInquiryData = useCallback(async () => {
     try {
       setIsLoading(true);
       
@@ -140,12 +140,12 @@ export default function InquiryProgressPage({ params }: PageParams) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [id]);
 
   // Fetch inquiry data from Supabase
   React.useEffect(() => {
     fetchInquiryData();
-  }, [id]);
+  }, [fetchInquiryData]);
 
   return (
     <div className="container mx-auto px-4 py-8">
