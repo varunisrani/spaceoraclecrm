@@ -7,15 +7,13 @@ import { supabase } from '../../../utils/supabase';
 
 // Fix the interface to match Next.js expectations
 type PageProps = {
-  params: {
-    id: string;
-  };
+  params: Promise<{ id: string }>;
   searchParams: Record<string, string | string[] | undefined>;
 };
 
-export default function EditEnquiry({ params }: PageProps) {
-  const { id } = params;
+export default function EditEnquiry(props: PageProps) {
   const router = useRouter();
+  const [id, setId] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({
@@ -33,7 +31,18 @@ export default function EditEnquiry({ params }: PageProps) {
     "Created Date": ''
   });
 
+  // Extract id from params Promise
+  useEffect(() => {
+    async function extractParams() {
+      const params = await props.params;
+      setId(params.id);
+    }
+    extractParams();
+  }, [props.params]);
+
   const fetchEnquiry = useCallback(async () => {
+    if (!id) return; // Skip if id is not yet available
+    
     try {
       setIsLoading(true);
       const { data, error } = await supabase
@@ -53,8 +62,10 @@ export default function EditEnquiry({ params }: PageProps) {
   }, [id]);
 
   useEffect(() => {
-    fetchEnquiry();
-  }, [fetchEnquiry]);
+    if (id) {
+      fetchEnquiry();
+    }
+  }, [fetchEnquiry, id]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
