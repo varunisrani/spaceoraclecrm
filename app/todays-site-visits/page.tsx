@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useCallback } from 'react';
 import Link from 'next/link';
 import { supabase } from '../utils/supabase';
 
@@ -25,7 +25,7 @@ export default function TodaysSiteVisitsPage() {
   };
 
   // Fetch site visits from Inquiry_Progress table
-  const fetchTodaysSiteVisits = async () => {
+  const fetchTodaysSiteVisits = useCallback(async () => {
     try {
       setIsLoading(true);
       const todayDate = getTodayDate();
@@ -56,12 +56,12 @@ export default function TodaysSiteVisitsPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   // Fetch site visits when component mounts
   React.useEffect(() => {
     fetchTodaysSiteVisits();
-  }, []);
+  }, [fetchTodaysSiteVisits]);
 
   return (
     <div className="fade-in">
@@ -72,7 +72,7 @@ export default function TodaysSiteVisitsPage() {
         
         <div className="relative py-14 px-8 text-center">
           <h1 className="text-4xl md:text-5xl font-bold text-white mb-3">
-            Today's Site Visits
+            Today&apos;s Site Visits
           </h1>
           <p className="text-[#e5d0b1] text-lg md:text-xl max-w-3xl mx-auto">
             Site visits scheduled for {getTodayDate()}
@@ -81,11 +81,12 @@ export default function TodaysSiteVisitsPage() {
       </div>
 
       <div className="container mx-auto px-4">
-        <div className="bg-white rounded-lg shadow">
+        <div className="premium-card overflow-hidden">
           <div className="p-6 border-b">
             <div className="flex justify-between items-center">
-              <h2 className="text-lg font-semibold">
-                Today's Site Visit Details
+              <h2 className="text-lg font-semibold flex items-center">
+                <span className="inline-block w-1.5 h-5 bg-[#c69c6d] rounded-full mr-2"></span>
+                Today&apos;s Site Visit Details
               </h2>
               <Link 
                 href="/site-visits"
@@ -103,57 +104,68 @@ export default function TodaysSiteVisitsPage() {
           ) : (
             <div className="overflow-x-auto">
               {siteVisits.length > 0 ? (
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
+                <table className="premium-table">
+                  <thead>
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Client Name
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Visit Date
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Enquiry ID
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Progress Type
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Remarks
-                      </th>
+                      <th>Client</th>
+                      <th>Visit Date</th>
+                      <th>Enquiry ID</th>
+                      <th>Progress Type</th>
+                      <th>Remarks</th>
+                      <th className="text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
+                  <tbody>
                     {siteVisits.map((visit) => (
                       <tr key={visit.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
+                        <td>
+                          <div className="flex items-center gap-3">
                             <div className="flex-shrink-0 h-10 w-10 bg-[#1a2e29]/10 rounded-full flex items-center justify-center text-[#1a2e29]">
                               {visit.clientName.charAt(0).toUpperCase()}
                             </div>
-                            <div className="ml-4">
-                              <div className="text-sm font-medium text-gray-900">{visit.clientName}</div>
+                            <div>
+                              <div className="font-medium text-gray-900">{visit.clientName}</div>
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {visit.date}
+                        <td>
+                          <div className="text-sm text-gray-500">
+                            {visit.date}
+                          </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <td>
                           <Link 
                             href={`/enquiry/${visit.eid}`}
-                            className="text-blue-600 hover:underline"
+                            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-[#1a2e29]/10 dark:bg-[#c69c6d]/10 text-[#1a2e29] dark:text-[#c69c6d] hover:bg-[#1a2e29]/20 transition-colors"
                           >
                             {visit.eid}
                           </Link>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                        <td>
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
                             {visit.progress_type.replace(/_/g, ' ')}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
-                          {visit.remark}
+                        <td>
+                          <div className="max-w-[200px]">
+                            <div className="text-sm text-gray-600 dark:text-gray-400 truncate">
+                              {visit.remark}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Link
+                              href={`/enquiry/${visit.eid}/progress`}
+                              className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors text-gray-600 dark:text-gray-400"
+                              title="View progress history"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                              </svg>
+                            </Link>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -161,6 +173,9 @@ export default function TodaysSiteVisitsPage() {
                 </table>
               ) : (
                 <div className="text-center py-16 text-gray-500">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-gray-400 mb-4 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
                   <div className="text-lg font-medium">No site visits scheduled for today</div>
                   <p className="mt-2">There are no site visits scheduled for {getTodayDate()}</p>
                 </div>

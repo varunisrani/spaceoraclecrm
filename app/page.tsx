@@ -5,31 +5,31 @@ import { Enquiry, DashboardStats, InquirySource } from './types';
 import { getEnquiries } from './utils/localStorage';
 import { useInitializeData } from './utils/initializeData';
 import SearchBar from './components/SearchBar';
-import StatusBadge from './components/StatusBadge';
 import Link from 'next/link';
-import { InquiryProgress, InquiryStatus } from './types/inquiry';
+import { InquiryProgress } from './types/inquiry';
 import InquiryProgressTracker from './components/InquiryProgress';
-import RemarksHistory from './components/RemarksHistory';
 import { supabase } from './utils/supabase';
 
-interface EnquiryCount {
-  total: number;
-  new: number;
-}
+// Commented out as it's not currently used
+// interface EnquiryCount {
+//   total: number;
+//   new: number;
+// }
 
-const DashboardMetricCard = ({ label, value, trend }: { label: string; value: number; trend?: number }) => (
-  <div className="bg-white rounded-lg shadow p-6">
-    <h3 className="text-gray-500 text-sm mb-1">{label}</h3>
-    <div className="flex items-end space-x-2">
-      <p className="text-2xl font-bold">{value}</p>
-      {trend !== undefined && (
-        <span className={`text-sm ${trend >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-          {trend >= 0 ? '+' : ''}{trend}%
-        </span>
-      )}
-    </div>
-  </div>
-);
+// Commented out as it's not currently used
+// const DashboardMetricCard = ({ label, value, trend }: { label: string; value: number; trend?: number }) => (
+//   <div className="bg-white rounded-lg shadow p-6">
+//     <h3 className="text-gray-500 text-sm mb-1">{label}</h3>
+//     <div className="flex items-end space-x-2">
+//       <p className="text-2xl font-bold">{value}</p>
+//       {trend !== undefined && (
+//         <span className={`text-sm ${trend >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+//           {trend >= 0 ? '+' : ''}{trend}%
+//         </span>
+//       )}
+//     </div>
+//   </div>
+// );
 
 export default function Home() {
   useInitializeData();
@@ -319,17 +319,16 @@ export default function Home() {
     // In a real app, this would filter data or redirect to a search results page
   };
 
-  // Sample data - replace with actual data from your backend
-  const metrics = {
-    totalSales: 125,
-    salesTrend: 12,
-    activeInquiries: 45,
-    inquiriesTrend: 8,
-    siteVisits: 28,
-    siteVisitsTrend: -5,
-    conversionRate: 15,
-    conversionTrend: 2,
-  };
+  // Sample data - commented out as not currently used
+  // const metrics = {
+  //   totalSales: 125,
+  //   salesTrend: 12,
+  //   activeInquiries: 45,
+  //   inquiriesTrend: 8,
+  //   siteVisits: 28,
+  //   siteVisitsTrend: -5,
+  //   conversionRate: 15,
+  // };
 
   const recentProgress: InquiryProgress = {
     id: '1',

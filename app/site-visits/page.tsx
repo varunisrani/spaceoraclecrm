@@ -130,7 +130,7 @@ export default function SiteVisitsPage() {
         <div className="bg-white rounded-lg shadow">
           <div className="p-6 border-b">
             <div className="flex justify-between items-center">
-              <h2 className="text-lg font-semibold">Today's Site Visits</h2>
+              <h2 className="text-lg font-semibold">Today&apos;s Site Visits</h2>
               <button 
                 onClick={() => setShowScheduleForm(true)}
                 className="premium-button"
