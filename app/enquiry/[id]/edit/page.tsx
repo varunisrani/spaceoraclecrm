@@ -1,11 +1,18 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '../../../utils/supabase';
 
-export default function EditEnquiry({ params }: { params: { id: string } }) {
+interface PageParams {
+  params: {
+    id: string;
+  };
+}
+
+export default function EditEnquiry({ params }: PageParams) {
+  const { id } = params;
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -30,7 +37,7 @@ export default function EditEnquiry({ params }: { params: { id: string } }) {
       const { data, error } = await supabase
         .from('enquiries')
         .select('*')
-        .eq('id', params.id)
+        .eq('id', id)
         .single();
 
       if (error) throw error;
@@ -41,7 +48,7 @@ export default function EditEnquiry({ params }: { params: { id: string } }) {
     } finally {
       setIsLoading(false);
     }
-  }, [params.id]);
+  }, [id]);
 
   useEffect(() => {
     fetchEnquiry();
@@ -55,7 +62,7 @@ export default function EditEnquiry({ params }: { params: { id: string } }) {
       const { error } = await supabase
         .from('enquiries')
         .update(formData)
-        .eq('id', params.id);
+        .eq('id', id);
 
       if (error) throw error;
       router.push('/enquiry/list');

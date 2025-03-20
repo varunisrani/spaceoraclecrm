@@ -60,13 +60,13 @@ interface InquiryProgressData {
 }
 
 interface PageParams {
-  params: Promise<{
+  params: {
     id: string;
-  }>;
+  };
 }
 
 export default function InquiryProgressPage({ params }: PageParams) {
-  const { id } = React.use(params);
+  const { id } = params;
   const [progressHistory, setProgressHistory] = React.useState<InquiryProgressData[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [showAddProgress, setShowAddProgress] = React.useState(false);

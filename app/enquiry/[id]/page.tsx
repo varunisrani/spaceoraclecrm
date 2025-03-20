@@ -4,6 +4,12 @@ import InquiryProgressTracker from '../../components/InquiryProgress';
 import RemarksHistory from '../../components/RemarksHistory';
 import Link from 'next/link';
 
+interface PageParams {
+  params: {
+    id: string;
+  };
+}
+
 interface EnquiryDetails {
   id: string;
   clientName: string;
@@ -19,10 +25,10 @@ interface EnquiryDetails {
   remarks: InquiryRemark[];
 }
 
-const EnquiryDetailsPage = () => {
+const EnquiryDetailsPage = ({ params }: PageParams) => {
   // Sample data - replace with actual data from your backend
   const enquiry: EnquiryDetails = {
-    id: '1',
+    id: params.id, // Use the ID from the route params
     clientName: 'ER Mrugesh Prajapati',
     contactNumber: '+91 1234567890',
     propertyType: 'Unknown',
@@ -36,8 +42,10 @@ const EnquiryDetailsPage = () => {
       {
         id: '1',
         inquiryId: '1',
+        progressType: 'site_visit',
         status: 'site_visit_scheduled',
         remarks: 'Scheduled site visit for next week',
+        leadSource: 'Facebook',
         createdAt: new Date(),
         updatedAt: new Date(),
         createdBy: 'Maulik Jadav'
