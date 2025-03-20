@@ -41,8 +41,8 @@ export default function ScheduleVisitForm({ onClose, onSubmit }: ScheduleVisitFo
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Create a new Date object combining the date and time
-    const scheduledDateTime = new Date(`${formData.scheduledDate}T${formData.scheduledTime}`);
+    // Combine date and time into a string
+    const scheduledDateTime = `${formData.scheduledDate}T${formData.scheduledTime}`;
     
     onSubmit({
       inquiryId: formData.inquiryId,

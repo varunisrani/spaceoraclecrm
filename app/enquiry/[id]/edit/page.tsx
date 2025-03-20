@@ -1,12 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { supabase } from '../../utils/supabase';
+import { supabase } from '../../../utils/supabase';
 
-export default function NewEnquiry() {
+export default function EditEnquiry({ params }: { params: { id: string } }) {
   const router = useRouter();
+  const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({
     "Client Name": '',
@@ -14,34 +15,53 @@ export default function NewEnquiry() {
     "Email": '',
     "Enquiry For": '',
     "Property Type": '',
-    "Assigned To": 'Rushirajsinh, Zala', // Default value matching Supabase
-    "Enquiry Progress": 'New', // Default status
+    "Assigned To": '',
+    "Enquiry Progress": '',
     "Remarks": '',
-    "Enquiry Source": 'Facebook', // Default source
-    "Area": 'bhopal',
+    "Enquiry Source": '',
+    "Area": '',
     "Configuration": '',
-    "Created Date": new Date().toISOString()
+    "Created Date": ''
   });
+
+  useEffect(() => {
+    fetchEnquiry();
+  }, [params.id]);
+
+  const fetchEnquiry = async () => {
+    try {
+      setIsLoading(true);
+      const { data, error } = await supabase
+        .from('enquiries')
+        .select('*')
+        .eq('id', params.id)
+        .single();
+
+      if (error) throw error;
+      setFormData(data);
+    } catch (error) {
+      console.error('Error fetching enquiry:', error);
+      alert('Error fetching enquiry details. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     try {
       setIsSaving(true);
-      
-      // Insert into Supabase
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('enquiries')
-        .insert([formData]);
+        .update(formData)
+        .eq('id', params.id);
 
-      if (error) {
-        throw error;
-      }
-
+      if (error) throw error;
       router.push('/enquiry/list');
     } catch (error) {
-      console.error('Error creating enquiry:', error);
-      alert('Error creating enquiry. Please try again.');
+      console.error('Error updating enquiry:', error);
+      alert('Error updating enquiry. Please try again.');
     } finally {
       setIsSaving(false);
     }
@@ -51,6 +71,14 @@ export default function NewEnquiry() {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#c69c6d]"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="fade-in">
@@ -62,9 +90,9 @@ export default function NewEnquiry() {
         <div className="relative py-12 px-8 text-white">
           <div className="flex flex-col md:flex-row md:items-center justify-between mb-6">
             <div>
-              <h1 className="text-3xl font-bold mb-2">Add New Enquiry</h1>
+              <h1 className="text-3xl font-bold mb-2">Edit Enquiry</h1>
               <p className="text-[#e5d0b1] max-w-2xl">
-                Capture and track new client interests and property requirements
+                Update client enquiry details
               </p>
             </div>
             <Link 
@@ -241,7 +269,7 @@ export default function NewEnquiry() {
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                       <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
                     </svg>
-                    Add Enquiry
+                    Save Changes
                   </>
                 )}
               </button>

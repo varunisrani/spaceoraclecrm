@@ -12,66 +12,66 @@ const demoSiteVisits: SiteVisitStatus[] = [
     id: '1',
     inquiryId: 'INQ001',
     clientName: 'Raj Sharma',
-    scheduledDate: new Date(new Date().setHours(10, 0)),
+    scheduledDate: new Date(new Date().setHours(10, 0)).toISOString(),
     status: 'scheduled',
     remarks: 'Interested in 3BHK property',
     assignedTo: 'Rajdeep',
     createdBy: 'System',
     updatedBy: 'System',
-    createdAt: new Date(),
-    updatedAt: new Date()
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
   },
   {
     id: '2',
     inquiryId: 'INQ002',
     clientName: 'Priya Patel',
-    scheduledDate: new Date(new Date().setHours(14, 30)),
+    scheduledDate: new Date(new Date().setHours(14, 30)).toISOString(),
     status: 'scheduled',
     remarks: 'Looking for 2BHK with garden view',
     assignedTo: 'Rushiraj',
     createdBy: 'System',
     updatedBy: 'System',
-    createdAt: new Date(),
-    updatedAt: new Date()
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
   },
   {
     id: '3',
     inquiryId: 'INQ003',
     clientName: 'Amit Singh',
-    scheduledDate: new Date(new Date().setHours(16, 0)),
+    scheduledDate: new Date(new Date().setHours(16, 0)).toISOString(),
     status: 'done',
     remarks: 'Client liked the property, discussing payment terms',
     assignedTo: 'Mantik',
     createdBy: 'System',
     updatedBy: 'System',
-    createdAt: new Date(),
-    updatedAt: new Date()
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
   },
   {
     id: '4',
     inquiryId: 'INQ004',
     clientName: 'Meera Shah',
-    scheduledDate: new Date(new Date().setHours(11, 30)),
+    scheduledDate: new Date(new Date().setHours(11, 30)).toISOString(),
     status: 'cancelled',
     remarks: 'Client rescheduled for next week',
     assignedTo: 'Rajdeep',
     createdBy: 'System',
     updatedBy: 'System',
-    createdAt: new Date(),
-    updatedAt: new Date()
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
   },
   {
     id: '5',
     inquiryId: 'INQ005',
     clientName: 'Karan Mehta',
-    scheduledDate: new Date(new Date().setHours(15, 0)),
+    scheduledDate: new Date(new Date().setHours(15, 0)).toISOString(),
     status: 'scheduled',
     remarks: 'Second visit to finalize the deal',
     assignedTo: 'Rushiraj',
     createdBy: 'System',
     updatedBy: 'System',
-    createdAt: new Date(),
-    updatedAt: new Date()
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
   }
 ];
 
@@ -84,15 +84,7 @@ export default function SiteVisitsPage() {
     const storedVisits = localStorage.getItem('siteVisits');
     if (storedVisits) {
       const parsedVisits = JSON.parse(storedVisits);
-      // Convert string dates back to Date objects
-      const visitsWithDates = parsedVisits.map((visit: any) => ({
-        ...visit,
-        scheduledDate: new Date(visit.scheduledDate),
-        createdAt: new Date(visit.createdAt),
-        updatedAt: new Date(visit.updatedAt),
-        actualDate: visit.actualDate ? new Date(visit.actualDate) : undefined
-      }));
-      setSiteVisits(visitsWithDates);
+      setSiteVisits(parsedVisits);
     } else {
       // Initialize with demo data if no stored visits exist
       localStorage.setItem('siteVisits', JSON.stringify(demoSiteVisits));
@@ -101,7 +93,11 @@ export default function SiteVisitsPage() {
 
   const handleMarkCompleted = (id: string) => {
     const updatedVisits = siteVisits.map(visit => 
-      visit.id === id ? { ...visit, status: 'done' as const } : visit
+      visit.id === id ? { 
+        ...visit, 
+        status: 'done' as const,
+        updatedAt: new Date().toISOString()
+      } : visit
     );
     setSiteVisits(updatedVisits);
     localStorage.setItem('siteVisits', JSON.stringify(updatedVisits));
@@ -109,7 +105,11 @@ export default function SiteVisitsPage() {
 
   const handleCancel = (id: string) => {
     const updatedVisits = siteVisits.map(visit => 
-      visit.id === id ? { ...visit, status: 'cancelled' as const } : visit
+      visit.id === id ? { 
+        ...visit, 
+        status: 'cancelled' as const,
+        updatedAt: new Date().toISOString()
+      } : visit
     );
     setSiteVisits(updatedVisits);
     localStorage.setItem('siteVisits', JSON.stringify(updatedVisits));
@@ -119,8 +119,8 @@ export default function SiteVisitsPage() {
     const newVisit: SiteVisitStatus = {
       ...visit,
       id: Date.now().toString(),
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
       createdBy: 'System',
       updatedBy: 'System'
     };

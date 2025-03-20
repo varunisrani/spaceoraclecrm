@@ -57,12 +57,12 @@ export type SiteVisitStatus = {
   inquiryId: string;
   clientName: string;
   status: 'scheduled' | 'done' | 'cancelled';
-  scheduledDate: Date;
-  actualDate?: Date;
+  scheduledDate: Date | string;
+  actualDate?: Date | string;
   remarks?: string;
   assignedTo: string;
   createdBy: string;
   updatedBy: string;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: Date | string;
+  updatedAt: Date | string;
 }; 
