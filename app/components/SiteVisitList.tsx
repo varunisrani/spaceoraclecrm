@@ -47,7 +47,7 @@ const SiteVisitList: React.FC<SiteVisitListProps> = ({
             <th>Property</th>
             <th>Assigned To</th>
             <th>Status</th>
-            <th>Remarks</th>
+            <th>Remark</th>
             <th className="text-right">Actions</th>
           </tr>
         </thead>
