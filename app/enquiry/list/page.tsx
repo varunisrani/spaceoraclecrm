@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import SearchBar from '../../components/SearchBar';
 import Link from 'next/link';
 import { supabase } from '../../utils/supabase';
@@ -28,6 +28,25 @@ interface Enquiry {
   "Last Remarks": string;
 }
 
+// Separate component that uses searchParams
+function SearchParamsHandler({ onSearchChange }: { onSearchChange: (search: string) => void }) {
+  const searchParams = useSearchParams();
+  
+  useEffect(() => {
+    const search = searchParams.get('search');
+    const category = searchParams.get('category');
+    
+    if (search) {
+      onSearchChange(search);
+    } else if (category) {
+      // Handle category filtering if needed
+      console.log('Category:', category);
+    }
+  }, [searchParams, onSearchChange]);
+  
+  return null; // This component doesn't render anything
+}
+
 export default function EnquiryList() {
   const [enquiries, setEnquiries] = useState<Enquiry[]>([]);
   const [filteredEnquiries, setFilteredEnquiries] = useState<Enquiry[]>([]);
@@ -35,7 +54,6 @@ export default function EnquiryList() {
   const [filterSource, setFilterSource] = useState<string>('ALL');
   const [filterEmployee, setFilterEmployee] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const searchParams = useSearchParams();
 
   // Function to fetch enquiries
   const fetchEnquiries = async (query: string, source: string, employee: string) => {
@@ -98,19 +116,6 @@ export default function EnquiryList() {
     }
   };
 
-  // Effect to handle URL parameters
-  useEffect(() => {
-    const search = searchParams.get('search');
-    const category = searchParams.get('category');
-    
-    if (search) {
-      setSearchQuery(search);
-    } else if (category) {
-      // Handle category filtering if needed
-      console.log('Category:', category);
-    }
-  }, [searchParams]);
-
   // Effect to handle debounced search
   useEffect(() => {
     const timeoutId = setTimeout(() => {
@@ -128,6 +133,11 @@ export default function EnquiryList() {
 
   return (
     <div className="fade-in">
+      {/* SearchParams Handling (wrapped in Suspense) */}
+      <Suspense fallback={null}>
+        <SearchParamsHandler onSearchChange={setSearchQuery} />
+      </Suspense>
+      
       {/* Hero Section */}
       <div className="relative mb-16">
         <div className="absolute inset-0 bg-gradient-to-r from-[#1a2e29]/90 to-[#264a42]/90 rounded-2xl -z-10"></div>
