@@ -21,6 +21,7 @@ export default function NewEnquiry() {
     status: 'new',
     assignedEmployee: 'Rajdeep',
     category: 'new',
+    area: 'bhopal',
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -158,6 +159,23 @@ export default function NewEnquiry() {
                   <option value="PORTAL">Portal</option>
                 </select>
               </div>
+            </div>
+
+            {/* Area */}
+            <div>
+              <label htmlFor="area" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Area
+              </label>
+              <select
+                id="area"
+                name="area"
+                value={formData.area}
+                onChange={handleChange}
+                className="premium-input w-full"
+              >
+                <option value="bhopal">Bhopal</option>
+                <option value="sindhupan">Sindhupan</option>
+              </select>
             </div>
 
             {/* Description */}

@@ -3,9 +3,11 @@
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
+import React from 'react';
 
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
+  const [reportsOpen, setReportsOpen] = React.useState(false);
 
   // Effect for navbar scroll state
   useEffect(() => {
@@ -46,6 +48,37 @@ export default function Navbar() {
             <NavLink href="/enquiry/new" label="New Enquiry" />
             <NavLink href="/enquiry/list" label="Enquiries" />
             <NavLink href="/site-visits" label="Site Visits" />
+            
+            {/* Reports Dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => setReportsOpen(!reportsOpen)}
+                className="flex items-center hover:text-[#c69c6d] transition-colors focus:outline-none"
+              >
+                Reports
+                <svg
+                  className={`ml-1 h-4 w-4 transition-transform ${reportsOpen ? 'rotate-180' : ''}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              
+              {reportsOpen && (
+                <div className="absolute left-0 mt-2 w-48 rounded-md shadow-lg bg-white text-gray-700 z-50">
+                  <div className="py-1">
+                    <Link
+                      href="/reports/employee-inquiry"
+                      className="block px-4 py-2 hover:bg-gray-100"
+                    >
+                      Employee Inquiry Report
+                    </Link>
+                  </div>
+                </div>
+              )}
+            </div>
             
             <button className="ml-4 premium-button-accent">
               Connect Meta Ads

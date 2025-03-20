@@ -7,6 +7,23 @@ import { useInitializeData } from './utils/initializeData';
 import SearchBar from './components/SearchBar';
 import StatusBadge from './components/StatusBadge';
 import Link from 'next/link';
+import { InquiryProgress, InquiryStatus } from './types/inquiry';
+import InquiryProgressTracker from './components/InquiryProgress';
+import RemarksHistory from './components/RemarksHistory';
+
+const DashboardMetricCard = ({ label, value, trend }: { label: string; value: number; trend?: number }) => (
+  <div className="bg-white rounded-lg shadow p-6">
+    <h3 className="text-gray-500 text-sm mb-1">{label}</h3>
+    <div className="flex items-end space-x-2">
+      <p className="text-2xl font-bold">{value}</p>
+      {trend !== undefined && (
+        <span className={`text-sm ${trend >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+          {trend >= 0 ? '+' : ''}{trend}%
+        </span>
+      )}
+    </div>
+  </div>
+);
 
 export default function Home() {
   useInitializeData();
@@ -108,6 +125,28 @@ export default function Home() {
     // In a real app, this would filter data or redirect to a search results page
   };
 
+  // Sample data - replace with actual data from your backend
+  const metrics = {
+    totalSales: 125,
+    salesTrend: 12,
+    activeInquiries: 45,
+    inquiriesTrend: 8,
+    siteVisits: 28,
+    siteVisitsTrend: -5,
+    conversionRate: 15,
+    conversionTrend: 2,
+  };
+
+  const recentProgress: InquiryProgress = {
+    id: '1',
+    inquiryId: '1',
+    status: 'site_visit_done' as InquiryStatus,
+    remarks: 'Client showed interest in the property. Following up next week.',
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    createdBy: 'Maulik Jadav',
+  };
+
   return (
     <div className="fade-in">
       {/* Premium Hero Section */}
@@ -163,7 +202,7 @@ export default function Home() {
               color="purple"
             />
             <StatCard 
-              title="Successful Deals" 
+              title="Sales" 
               value={stats.successfulDeals}
               icon={<CurrencyIcon />}
               href="#"
@@ -267,6 +306,36 @@ export default function Home() {
               </div>
             </div>
           </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="bg-white rounded-lg shadow p-6">
+              <h2 className="text-xl font-semibold mb-4">Recent Activity</h2>
+              <div className="space-y-4">
+                <InquiryProgressTracker
+                  progress={recentProgress}
+                  isEditable={false}
+                />
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow p-6">
+              <h2 className="text-xl font-semibold mb-4">Quick Actions</h2>
+              <div className="grid grid-cols-2 gap-4">
+                <button className="bg-blue-500 text-white p-4 rounded-lg hover:bg-blue-600 transition-colors">
+                  New Inquiry
+                </button>
+                <button className="bg-green-500 text-white p-4 rounded-lg hover:bg-green-600 transition-colors">
+                  Schedule Visit
+                </button>
+                <button className="bg-purple-500 text-white p-4 rounded-lg hover:bg-purple-600 transition-colors">
+                  Add Remark
+                </button>
+                <button className="bg-yellow-500 text-white p-4 rounded-lg hover:bg-yellow-600 transition-colors">
+                  Generate Report
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -319,8 +388,16 @@ const CategoryCard = ({ title, count, icon, enquiries, colorClass }: {
   enquiries: Enquiry[];
   colorClass: string;
 }) => {
+  // Convert title to category value for filtering
+  const getCategoryValue = (title: string) => {
+    return title.toLowerCase();
+  };
+
   return (
-    <div className={`premium-card overflow-hidden border transition-all hover:shadow-md ${colorClass}`}>
+    <Link 
+      href={`/enquiry/list?category=${getCategoryValue(title)}`}
+      className={`premium-card overflow-hidden border transition-all hover:shadow-md ${colorClass}`}
+    >
       <div className="p-5">
         <div className="flex justify-between items-center mb-4">
           <div className="flex items-center gap-3">
@@ -353,15 +430,14 @@ const CategoryCard = ({ title, count, icon, enquiries, colorClass }: {
         </div>
         
         {count > 2 && (
-          <Link 
-            href="/enquiry/list" 
+          <div 
             className="text-xs text-[#1a2e29] dark:text-[#c69c6d] font-medium hover:underline block text-center"
           >
             View all {count} enquiries
-          </Link>
+          </div>
         )}
       </div>
-    </div>
+    </Link>
   );
 };
 

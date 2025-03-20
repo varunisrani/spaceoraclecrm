@@ -7,6 +7,10 @@ import { useInitializeData } from '../../utils/initializeData';
 import SearchBar from '../../components/SearchBar';
 import StatusBadge from '../../components/StatusBadge';
 import Link from 'next/link';
+import { InquiryProgress, InquiryRemark } from '../../types/inquiry';
+import InquiryProgressTracker from '../../components/InquiryProgress';
+import RemarksHistory from '../../components/RemarksHistory';
+import EditInquiryForm from '../../components/EditInquiryForm';
 
 export default function EnquiryList() {
   useInitializeData();
@@ -18,20 +22,51 @@ export default function EnquiryList() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [filterSource, setFilterSource] = useState<string>('ALL');
   const [filterEmployee, setFilterEmployee] = useState<string>('ALL');
+  const [selectedEnquiry, setSelectedEnquiry] = useState<string | null>(null);
+  const [showAddProgress, setShowAddProgress] = useState(false);
+  const [selectedEnquiries, setSelectedEnquiries] = useState<string[]>([]);
+  const [showEditInquiry, setShowEditInquiry] = useState(false);
+  const [editingInquiry, setEditingInquiry] = useState<Enquiry | null>(null);
+  
+  // Get category from URL query parameter
+  const searchParams = new URLSearchParams(window.location.search);
+  const categoryFilter = searchParams.get('category');
   
   // Load enquiries from localStorage
   useEffect(() => {
     const allEnquiries = getEnquiries();
     setEnquiries(allEnquiries);
-    setFilteredEnquiries(allEnquiries);
+    
+    // Apply initial filtering based on URL category parameter
+    let filtered = [...allEnquiries];
+    
+    if (categoryFilter) {
+      filtered = filtered.filter(e => e.category === categoryFilter);
+    }
+    
+    // Apply other filters
+    if (filterSource !== 'ALL') {
+      filtered = filtered.filter(e => e.source === filterSource);
+    }
+    
+    if (filterEmployee !== 'ALL') {
+      filtered = filtered.filter(e => e.assignedEmployee === filterEmployee);
+    }
+    
+    setFilteredEnquiries(filtered);
     
     // Simulate loading for UI polish
     setTimeout(() => setIsLoading(false), 500);
-  }, []);
+  }, [categoryFilter, filterSource, filterEmployee]);
   
-  // Apply filters whenever filter state changes
+  // Update filters whenever filter state changes
   useEffect(() => {
     let filtered = [...enquiries];
+    
+    // Apply category filter
+    if (categoryFilter) {
+      filtered = filtered.filter(e => e.category === categoryFilter);
+    }
     
     // Apply source filter
     if (filterSource !== 'ALL') {
@@ -44,7 +79,7 @@ export default function EnquiryList() {
     }
     
     setFilteredEnquiries(filtered);
-  }, [filterSource, filterEmployee, enquiries]);
+  }, [filterSource, filterEmployee, enquiries, categoryFilter]);
 
   const handleSearch = (query: string) => {
     if (!query.trim()) {
@@ -102,6 +137,27 @@ export default function EnquiryList() {
     }
   };
 
+  const handleAddProgress = (enquiryId: string) => {
+    setSelectedEnquiry(enquiryId);
+    setShowAddProgress(true);
+  };
+
+  const handleEdit = (inquiry: Enquiry) => {
+    setEditingInquiry(inquiry);
+    setShowEditInquiry(true);
+  };
+
+  const handleSaveEdit = (updatedInquiry: Enquiry) => {
+    // Update in localStorage
+    const updatedEnquiries = enquiries.map(e => 
+      e.id === updatedInquiry.id ? updatedInquiry : e
+    );
+    setEnquiries(updatedEnquiries);
+    setFilteredEnquiries(updatedEnquiries);
+    setShowEditInquiry(false);
+    setEditingInquiry(null);
+  };
+
   return (
     <div className="fade-in">
       {/* Hero Section */}
@@ -112,9 +168,19 @@ export default function EnquiryList() {
         <div className="relative py-12 px-8 text-white">
           <div className="flex flex-col md:flex-row md:items-center justify-between mb-6">
             <div>
-              <h1 className="text-3xl font-bold mb-2">Enquiry Management</h1>
+              <h1 className="text-3xl font-bold mb-2">
+                {categoryFilter ? (
+                  `${categoryFilter.charAt(0).toUpperCase() + categoryFilter.slice(1)} Enquiries`
+                ) : (
+                  'All Enquiries'
+                )}
+              </h1>
               <p className="text-[#e5d0b1] max-w-2xl">
-                Track, manage, and optimize your client enquiries
+                {categoryFilter ? (
+                  `Viewing ${categoryFilter} enquiries`
+                ) : (
+                  'Track, manage, and optimize your client enquiries'
+                )}
               </p>
             </div>
             <Link 
@@ -171,6 +237,24 @@ export default function EnquiryList() {
                 </svg>
               </div>
             </div>
+            
+            {categoryFilter && (
+              <button
+                onClick={() => {
+                  // Remove category filter from URL and reset filtering
+                  const url = new URL(window.location.href);
+                  url.searchParams.delete('category');
+                  window.history.pushState({}, '', url);
+                  window.location.reload();
+                }}
+                className="bg-white/10 backdrop-blur-sm text-white px-4 py-2 rounded-lg hover:bg-white/20 transition-colors flex items-center gap-2"
+              >
+                <span>Clear {categoryFilter} filter</span>
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -205,11 +289,25 @@ export default function EnquiryList() {
             <table className="premium-table">
               <thead>
                 <tr>
+                  <th className="w-10">
+                    <input
+                      type="checkbox"
+                      className="rounded border-gray-300 text-[#c69c6d] focus:ring-[#c69c6d]"
+                      onChange={(e) => {
+                        // Handle select all
+                        const checked = e.target.checked;
+                        const newSelected = checked ? filteredEnquiries.map(e => e.id) : [];
+                        setSelectedEnquiries(newSelected);
+                      }}
+                      checked={selectedEnquiries.length === filteredEnquiries.length && filteredEnquiries.length > 0}
+                    />
+                  </th>
                   <th>Client</th>
                   <th>Configuration</th>
                   <th>Source</th>
                   <th>Assigned To</th>
                   <th>Status</th>
+                  <th>Last Remark</th>
                   <th>Date Created</th>
                   <th className="text-right">Actions</th>
                 </tr>
@@ -217,6 +315,21 @@ export default function EnquiryList() {
               <tbody>
                 {filteredEnquiries.map(enquiry => (
                   <tr key={enquiry.id}>
+                    <td>
+                      <input
+                        type="checkbox"
+                        className="rounded border-gray-300 text-[#c69c6d] focus:ring-[#c69c6d]"
+                        checked={selectedEnquiries.includes(enquiry.id)}
+                        onChange={(e) => {
+                          const checked = e.target.checked;
+                          setSelectedEnquiries(prev => 
+                            checked 
+                              ? [...prev, enquiry.id]
+                              : prev.filter(id => id !== enquiry.id)
+                          );
+                        }}
+                      />
+                    </td>
                     <td>
                       <div className="flex items-center gap-3">
                         <div className="flex h-10 w-10 rounded-full bg-[#1a2e29]/10 dark:bg-[#c69c6d]/10 items-center justify-center text-[#1a2e29] dark:text-[#c69c6d]">
@@ -248,13 +361,44 @@ export default function EnquiryList() {
                       <StatusBadge status={enquiry.status} type="enquiry" />
                     </td>
                     <td>
+                      <div className="max-w-[200px]">
+                        <div className="text-sm text-gray-600 dark:text-gray-400 truncate">
+                          {enquiry.lastRemark || 'No remarks yet'}
+                        </div>
+                        {enquiry.lastRemarkDate && (
+                          <div className="text-xs text-gray-500 dark:text-gray-500">
+                            {new Date(enquiry.lastRemarkDate).toLocaleDateString()}
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                    <td>
                       <div className="text-sm">
                         {new Date(enquiry.dateCreated).toLocaleDateString()}
                       </div>
                     </td>
                     <td className="text-right">
                       <div className="flex justify-end gap-2">
+                        <Link
+                          href={`/enquiry/${enquiry.id}/progress`}
+                          className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors text-gray-600 dark:text-gray-400"
+                          title="View progress history"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                          </svg>
+                        </Link>
                         <button
+                          onClick={() => handleEdit(enquiry)}
+                          className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors text-gray-600 dark:text-gray-400"
+                          title="Edit inquiry"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                        </button>
+                        <Link
+                          href={`/enquiry/${enquiry.id}`}
                           className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors text-gray-600 dark:text-gray-400"
                           title="View details"
                         >
@@ -262,19 +406,20 @@ export default function EnquiryList() {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                           </svg>
-                        </button>
+                        </Link>
                         <button
+                          onClick={() => handleAddProgress(enquiry.id)}
                           className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors text-gray-600 dark:text-gray-400"
-                          title="Schedule visit"
+                          title="Add progress"
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                           </svg>
                         </button>
                         <button
                           onClick={() => confirmDelete(enquiry.id)}
                           className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-red-600 dark:text-red-400"
-                          title="Delete enquiry"
+                          title="Delete inquiry"
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -356,6 +501,72 @@ export default function EnquiryList() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Add Progress Modal */}
+      {showAddProgress && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg max-w-2xl w-full p-6">
+            <h2 className="text-xl font-bold mb-4">Add Progress</h2>
+            <form className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Progress Type</label>
+                <select className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                  <option value="phone_call">Phone Call</option>
+                  <option value="site_visit">Site Visit</option>
+                  <option value="discussion">Discussion</option>
+                  <option value="deal_success">Deal Success</option>
+                  <option value="deal_loss">Deal Loss</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Remarks</label>
+                <textarea 
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  rows={3}
+                  placeholder="Enter remarks..."
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Next Follow-up Date</label>
+                <input 
+                  type="date"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+
+              <div className="flex justify-end space-x-2 mt-6">
+                <button
+                  type="button"
+                  onClick={() => setShowAddProgress(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+                >
+                  Save Progress
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Inquiry Modal */}
+      {showEditInquiry && editingInquiry && (
+        <EditInquiryForm
+          inquiry={editingInquiry}
+          onSave={handleSaveEdit}
+          onCancel={() => {
+            setShowEditInquiry(false);
+            setEditingInquiry(null);
+          }}
+        />
       )}
     </div>
   );
