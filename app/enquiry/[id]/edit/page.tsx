@@ -5,13 +5,15 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '../../../utils/supabase';
 
-interface PageParams {
+// Fix the interface to match Next.js expectations
+type PageProps = {
   params: {
     id: string;
   };
-}
+  searchParams: Record<string, string | string[] | undefined>;
+};
 
-export default function EditEnquiry({ params }: PageParams) {
+export default function EditEnquiry({ params, searchParams }: PageProps) {
   const { id } = params;
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);

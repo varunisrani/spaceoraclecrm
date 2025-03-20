@@ -4,11 +4,13 @@ import InquiryProgressTracker from '../../components/InquiryProgress';
 import RemarksHistory from '../../components/RemarksHistory';
 import Link from 'next/link';
 
-interface PageParams {
+// Fix the interface to match Next.js expectations
+type PageProps = {
   params: {
     id: string;
   };
-}
+  searchParams: Record<string, string | string[] | undefined>;
+};
 
 interface EnquiryDetails {
   id: string;
@@ -25,7 +27,7 @@ interface EnquiryDetails {
   remarks: InquiryRemark[];
 }
 
-const EnquiryDetailsPage = ({ params }: PageParams) => {
+const EnquiryDetailsPage = ({ params, searchParams }: PageProps) => {
   // Sample data - replace with actual data from your backend
   const enquiry: EnquiryDetails = {
     id: params.id, // Use the ID from the route params

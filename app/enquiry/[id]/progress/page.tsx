@@ -59,13 +59,15 @@ interface InquiryProgressData {
   created_at: string;
 }
 
-interface PageParams {
+// Fix the interface to match Next.js expectations
+type PageProps = {
   params: {
     id: string;
   };
-}
+  searchParams: Record<string, string | string[] | undefined>;
+};
 
-export default function InquiryProgressPage({ params }: PageParams) {
+export default function InquiryProgressPage({ params, searchParams }: PageProps) {
   const { id } = params;
   const [progressHistory, setProgressHistory] = React.useState<InquiryProgressData[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
