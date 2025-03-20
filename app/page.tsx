@@ -10,6 +10,12 @@ import Link from 'next/link';
 import { InquiryProgress, InquiryStatus } from './types/inquiry';
 import InquiryProgressTracker from './components/InquiryProgress';
 import RemarksHistory from './components/RemarksHistory';
+import { supabase } from './utils/supabase';
+
+interface EnquiryCount {
+  total: number;
+  new: number;
+}
 
 const DashboardMetricCard = ({ label, value, trend }: { label: string; value: number; trend?: number }) => (
   <div className="bg-white rounded-lg shadow p-6">
@@ -32,7 +38,10 @@ export default function Home() {
     newEnquiries: 0,
     totalEnquiries: 0,
     pendingSiteVisits: 0,
-    successfulDeals: 0
+    totalSales: 0,
+    monthlySales: 0,
+    weeklySales: 0,
+    dailySales: 0
   });
   
   const [categorizedEnquiries, setCategorizedEnquiries] = useState<{
@@ -58,24 +67,55 @@ export default function Home() {
 
   const [isLoading, setIsLoading] = useState(true);
   
+  // Function to fetch enquiry counts from Supabase
+  const fetchEnquiryCounts = async () => {
+    try {
+      // Get total count
+      const { count: totalCount, error: totalError } = await supabase
+        .from('enquiries')
+        .select('*', { count: 'exact', head: true });
+
+      if (totalError) throw totalError;
+
+      // Get new enquiries count (where Enquiry Progress is 'New')
+      const { count: newCount, error: newError } = await supabase
+        .from('enquiries')
+        .select('*', { count: 'exact', head: true })
+        .eq('Enquiry Progress', 'New');
+
+      if (newError) throw newError;
+
+      // Get today's site visits
+      const today = new Date();
+      const formattedDate = `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}/${today.getFullYear()}`;
+      
+      const { count: siteVisitsCount, error: siteVisitsError } = await supabase
+        .from('enquiries')
+        .select('*', { count: 'exact', head: true })
+        .eq('Site Visit Scheduled Date', formattedDate);
+
+      if (siteVisitsError) throw siteVisitsError;
+
+      setStats(prev => ({
+        ...prev,
+        totalEnquiries: totalCount || 0,
+        newEnquiries: newCount || 0,
+        pendingSiteVisits: siteVisitsCount || 0
+      }));
+
+    } catch (error) {
+      console.error('Error fetching counts:', error);
+    }
+  };
+
+  // Load data when component mounts
+  useEffect(() => {
+    fetchEnquiryCounts();
+  }, []);
+
   // Load data from localStorage
   useEffect(() => {
     const enquiries = getEnquiries();
-    
-    // Calculate statistics
-    const newEnquiries = enquiries.filter(e => e.status === 'new').length;
-    const totalEnquiries = enquiries.length;
-    
-    // For demo purposes, we'll use static numbers for site visits and deals
-    const pendingSiteVisits = 8;
-    const successfulDeals = 5;
-    
-    setStats({
-      newEnquiries,
-      totalEnquiries,
-      pendingSiteVisits,
-      successfulDeals
-    });
     
     // Categorize enquiries
     const categorized = {
@@ -140,11 +180,13 @@ export default function Home() {
   const recentProgress: InquiryProgress = {
     id: '1',
     inquiryId: '1',
-    status: 'site_visit_done' as InquiryStatus,
+    progressType: 'phone_call',
+    status: 'in_progress',
     remarks: 'Client showed interest in the property. Following up next week.',
+    leadSource: 'System',
     createdAt: new Date(),
     updatedAt: new Date(),
-    createdBy: 'Maulik Jadav',
+    createdBy: 'Maulik Jadav'
   };
 
   return (
@@ -195,7 +237,7 @@ export default function Home() {
               color="green"
             />
             <StatCard 
-              title="Pending Site Visits" 
+              title="Today's Site Visits" 
               value={stats.pendingSiteVisits}
               icon={<CalendarIcon />}
               href="/site-visits"
@@ -203,7 +245,7 @@ export default function Home() {
             />
             <StatCard 
               title="Sales" 
-              value={stats.successfulDeals}
+              value={stats.totalSales}
               icon={<CurrencyIcon />}
               href="#"
               color="gold"
@@ -393,6 +435,21 @@ const CategoryCard = ({ title, count, icon, enquiries, colorClass }: {
     return title.toLowerCase();
   };
 
+  const getStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'new':
+        return 'bg-blue-100 text-blue-800';
+      case 'in_progress':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'completed':
+        return 'bg-green-100 text-green-800';
+      case 'cancelled':
+        return 'bg-red-100 text-red-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
   return (
     <Link 
       href={`/enquiry/list?category=${getCategoryValue(title)}`}
@@ -417,7 +474,9 @@ const CategoryCard = ({ title, count, icon, enquiries, colorClass }: {
               <div className="font-medium text-gray-800 dark:text-white truncate">{enquiry.clientName}</div>
               <div className="flex justify-between items-center mt-1">
                 <div className="text-xs text-gray-500 dark:text-gray-400">{enquiry.configuration}</div>
-                <StatusBadge status={enquiry.status} type="enquiry" />
+                <div className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(enquiry.status)}`}>
+                  {enquiry.status}
+                </div>
               </div>
             </div>
           ))}

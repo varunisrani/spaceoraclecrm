@@ -2,8 +2,8 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { InquiryProgress, InquiryProgressType } from '../../../types/inquiry';
 import { supabase } from '../../../utils/supabase';
+import InquiryProgressForm from '../../../components/InquiryProgressForm';
 
 const getProgressTypeLabel = (type: InquiryProgressType): string => {
   return type.split('_').map(word => 
@@ -37,78 +37,102 @@ interface InquiryData {
   "Last Remarks": string;
 }
 
+type InquiryProgressType = 
+  | 'phone_call' 
+  | 'site_visit' 
+  | 'follow_up' 
+  | 'meeting' 
+  | 'email' 
+  | 'negotiation'
+  | 'document_collection'
+  | 'payment_discussion'
+  | 'deal_closure'
+  | 'other';
+
+interface InquiryProgressData {
+  id: string;
+  eid: string;
+  progress_type: InquiryProgressType;
+  remark: string;
+  date: string;
+  created_at: string;
+}
+
 interface PageParams {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 export default function InquiryProgressPage({ params }: PageParams) {
-  const [progressHistory, setProgressHistory] = React.useState<InquiryProgress[]>([]);
+  const { id } = React.use(params);
+  const [progressHistory, setProgressHistory] = React.useState<InquiryProgressData[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [showAddProgress, setShowAddProgress] = React.useState(false);
   const [inquiryData, setInquiryData] = React.useState<InquiryData | null>(null);
-  const [isSaving, setIsSaving] = React.useState(false);
-  const [formData, setFormData] = React.useState({
-    progressType: 'phone_call',
-    remarks: '',
-    nextFollowUpDate: ''
-  });
 
   const fetchInquiryData = async () => {
     try {
       setIsLoading(true);
-      const { data, error } = await supabase
+      
+      // Fetch old enquiry remarks
+      const { data: enquiryData, error: enquiryError } = await supabase
         .from('enquiries')
         .select('Remarks, "Last Remarks"')
-        .eq('id', params.id)
+        .eq('id', id)
         .single();
 
-      if (error) throw error;
+      if (enquiryError) throw enquiryError;
       
       const typedData: InquiryData = {
-        "Remarks": data?.Remarks || '',
-        "Last Remarks": data?.["Last Remarks"] || ''
+        "Remarks": enquiryData?.Remarks || '',
+        "Last Remarks": enquiryData?.["Last Remarks"] || ''
       };
       
       setInquiryData(typedData);
 
-      // Create progress history from remarks
-      if (typedData) {
-        const progressItems: InquiryProgress[] = [];
-        
-        // Add Last Remarks as the most recent item if it exists
-        if (typedData["Last Remarks"]) {
-          progressItems.push({
-            id: '1',
-            inquiryId: params.id,
-            progressType: 'follow_up',
-            status: 'in_progress',
-            remarks: typedData["Last Remarks"],
-            leadSource: 'System',
-            createdAt: new Date(),
-            updatedAt: new Date(),
-            createdBy: 'System'
-          });
-        }
+      // Fetch Inquiry_Progress data
+      const { data: progressData, error: progressError } = await supabase
+        .from('Inquiry_Progress')
+        .select('*')
+        .eq('eid', id)
+        .order('created_at', { ascending: false });
 
-        // Add Remarks as an older item if it exists
-        if (typedData["Remarks"]) {
-          progressItems.push({
-            id: '2',
-            inquiryId: params.id,
-            progressType: 'phone_call',
-            status: 'in_progress',
-            remarks: typedData["Remarks"],
-            leadSource: 'System',
-            createdAt: new Date(Date.now() - 86400000), // 1 day ago
-            updatedAt: new Date(Date.now() - 86400000),
-            createdBy: 'System'
-          });
-        }
+      if (progressError) throw progressError;
 
-        setProgressHistory(progressItems);
+      // Combine both types of data
+      const combinedProgress: InquiryProgressData[] = [];
+
+      // Add Inquiry_Progress entries
+      if (progressData) {
+        combinedProgress.push(...progressData);
       }
+
+      // Add Last Remarks as the most recent item if it exists
+      if (typedData["Last Remarks"]) {
+        combinedProgress.push({
+          id: 'last-remarks',
+          eid: id,
+          progress_type: 'follow_up' as InquiryProgressType,
+          remark: typedData["Last Remarks"],
+          date: new Date().toISOString().split('T')[0],
+          created_at: new Date().toISOString()
+        });
+      }
+
+      // Add Remarks as an older item if it exists
+      if (typedData["Remarks"]) {
+        combinedProgress.push({
+          id: 'remarks',
+          eid: id,
+          progress_type: 'phone_call' as InquiryProgressType,
+          remark: typedData["Remarks"],
+          date: new Date(Date.now() - 86400000).toISOString().split('T')[0], // 1 day ago
+          created_at: new Date(Date.now() - 86400000).toISOString()
+        });
+      }
+
+      setProgressHistory(combinedProgress);
     } catch (error) {
       console.error('Error fetching inquiry data:', error);
     } finally {
@@ -119,61 +143,7 @@ export default function InquiryProgressPage({ params }: PageParams) {
   // Fetch inquiry data from Supabase
   React.useEffect(() => {
     fetchInquiryData();
-  }, [params.id]);
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    try {
-      setIsSaving(true);
-
-      // Get current inquiry data
-      const { data: currentData, error: fetchError } = await supabase
-        .from('enquiries')
-        .select('Remarks, "Last Remarks"')
-        .eq('id', params.id)
-        .single();
-
-      if (fetchError) throw fetchError;
-
-      // Update the inquiry with new remarks
-      const { error: updateError } = await supabase
-        .from('enquiries')
-        .update({
-          "Remarks": currentData?.["Last Remarks"] || '', // Move current Last Remarks to Remarks
-          "Last Remarks": formData.remarks, // Set new remarks as Last Remarks
-          "NFD": formData.nextFollowUpDate || null // Update NFD if provided
-        })
-        .eq('id', params.id);
-
-      if (updateError) throw updateError;
-
-      // Refresh the data
-      await fetchInquiryData();
-      
-      // Reset form and close modal
-      setFormData({
-        progressType: 'phone_call',
-        remarks: '',
-        nextFollowUpDate: ''
-      });
-      setShowAddProgress(false);
-
-    } catch (error) {
-      console.error('Error saving progress:', error);
-      alert('Error saving progress. Please try again.');
-    } finally {
-      setIsSaving(false);
-    }
-  };
+  }, [id]);
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -182,7 +152,7 @@ export default function InquiryProgressPage({ params }: PageParams) {
         <div className="flex justify-between items-center mb-6">
           <div>
             <Link
-              href={`/enquiry/${params.id}`}
+              href={`/enquiry/${id}`}
               className="text-blue-500 hover:text-blue-600 mb-2 inline-block"
             >
               ← Back to Enquiry Details
@@ -210,7 +180,7 @@ export default function InquiryProgressPage({ params }: PageParams) {
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Date & Time
+                    Follow-up Date
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Progress Type
@@ -219,10 +189,7 @@ export default function InquiryProgressPage({ params }: PageParams) {
                     Remarks
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Next Follow-up
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Added By
+                    Added At
                   </th>
                 </tr>
               </thead>
@@ -230,27 +197,24 @@ export default function InquiryProgressPage({ params }: PageParams) {
                 {progressHistory.map((progress) => (
                   <tr key={progress.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {progress.createdAt.toLocaleString()}
+                      {progress.date}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getProgressTypeColor(progress.progressType)}`}>
-                        {getProgressTypeLabel(progress.progressType)}
+                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getProgressTypeColor(progress.progress_type)}`}>
+                        {getProgressTypeLabel(progress.progress_type)}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
-                      {progress.remarks}
+                      {progress.remark}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {progress.nextFollowUpDate?.toLocaleDateString() || '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {progress.createdBy}
+                      {new Date(progress.created_at).toLocaleString()}
                     </td>
                   </tr>
                 ))}
                 {progressHistory.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
+                    <td colSpan={4} className="px-6 py-4 text-center text-gray-500">
                       No progress history available
                     </td>
                   </tr>
@@ -263,89 +227,11 @@ export default function InquiryProgressPage({ params }: PageParams) {
 
       {/* Add Progress Modal */}
       {showAddProgress && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg max-w-2xl w-full p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold">Add New Progress</h2>
-              <button
-                onClick={() => setShowAddProgress(false)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Progress Type</label>
-                <select
-                  name="progressType"
-                  value={formData.progressType}
-                  onChange={handleInputChange}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                >
-                  <option value="phone_call">Phone Call</option>
-                  <option value="site_visit">Site Visit</option>
-                  <option value="follow_up">Follow Up</option>
-                  <option value="negotiation">Negotiation</option>
-                  <option value="document_collection">Document Collection</option>
-                  <option value="payment_discussion">Payment Discussion</option>
-                  <option value="deal_closure">Deal Closure</option>
-                </select>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Remarks</label>
-                <textarea 
-                  name="remarks"
-                  value={formData.remarks}
-                  onChange={handleInputChange}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                  rows={3}
-                  placeholder="Enter remarks..."
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Next Follow-up Date</label>
-                <input 
-                  type="date"
-                  name="nextFollowUpDate"
-                  value={formData.nextFollowUpDate}
-                  onChange={handleInputChange}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                />
-              </div>
-
-              <div className="flex justify-end space-x-2 mt-6">
-                <button
-                  type="button"
-                  onClick={() => setShowAddProgress(false)}
-                  disabled={isSaving}
-                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSaving}
-                  className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 flex items-center gap-2"
-                >
-                  {isSaving ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
-                      Saving...
-                    </>
-                  ) : (
-                    'Save Progress'
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <InquiryProgressForm
+          inquiryId={id}
+          onClose={() => setShowAddProgress(false)}
+          onSuccess={fetchInquiryData}
+        />
       )}
     </div>
   );
