@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useCallback, useState, useEffect } from 'react';
+import React, { useCallback } from 'react';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '../../../utils/supabase';
 import InquiryProgressForm from '../../../components/InquiryProgressForm';
@@ -59,30 +60,17 @@ interface InquiryProgressData {
   created_at: string;
 }
 
-// Fix the interface to match Next.js expectations
-type PageProps = {
-  params: Promise<{ id: string }>;
-  searchParams: Record<string, string | string[] | undefined>;
-};
-
-export default function InquiryProgressPage(props: PageProps) {
-  const [id, setId] = useState<string>('');
+export default function InquiryProgressPage() {
+  const params = useParams();
+  const id = Array.isArray(params.id) ? params.id[0] : params.id as string;
+  
   const [progressHistory, setProgressHistory] = React.useState<InquiryProgressData[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [showAddProgress, setShowAddProgress] = React.useState(false);
   const [inquiryData, setInquiryData] = React.useState<InquiryData | null>(null);
 
-  // Extract id from params Promise
-  useEffect(() => {
-    async function extractParams() {
-      const params = await props.params;
-      setId(params.id);
-    }
-    extractParams();
-  }, [props.params]);
-
   const fetchInquiryData = useCallback(async () => {
-    if (!id) return; // Skip if id is not yet available
+    if (!id) return;
     
     try {
       setIsLoading(true);
@@ -155,10 +143,8 @@ export default function InquiryProgressPage(props: PageProps) {
 
   // Fetch inquiry data from Supabase
   React.useEffect(() => {
-    if (id) {
-      fetchInquiryData();
-    }
-  }, [fetchInquiryData, id]);
+    fetchInquiryData();
+  }, [fetchInquiryData]);
 
   return (
     <div className="container mx-auto px-4 py-8">

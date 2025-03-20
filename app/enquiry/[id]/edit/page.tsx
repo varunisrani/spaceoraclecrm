@@ -1,19 +1,15 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '../../../utils/supabase';
 
-// Fix the interface to match Next.js expectations
-type PageProps = {
-  params: Promise<{ id: string }>;
-  searchParams: Record<string, string | string[] | undefined>;
-};
-
-export default function EditEnquiry(props: PageProps) {
+export default function EditEnquiry() {
   const router = useRouter();
-  const [id, setId] = useState<string>('');
+  const params = useParams();
+  const id = Array.isArray(params.id) ? params.id[0] : params.id;
+  
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({
@@ -31,17 +27,8 @@ export default function EditEnquiry(props: PageProps) {
     "Created Date": ''
   });
 
-  // Extract id from params Promise
-  useEffect(() => {
-    async function extractParams() {
-      const params = await props.params;
-      setId(params.id);
-    }
-    extractParams();
-  }, [props.params]);
-
   const fetchEnquiry = useCallback(async () => {
-    if (!id) return; // Skip if id is not yet available
+    if (!id) return;
     
     try {
       setIsLoading(true);

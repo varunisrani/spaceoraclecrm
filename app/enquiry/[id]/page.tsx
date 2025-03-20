@@ -1,16 +1,11 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
+import { useParams } from 'next/navigation';
 import { InquiryProgress, InquiryRemark } from '../../types/inquiry';
 import InquiryProgressTracker from '../../components/InquiryProgress';
 import RemarksHistory from '../../components/RemarksHistory';
 import Link from 'next/link';
-
-// Fix the interface to match Next.js expectations
-type PageProps = {
-  params: Promise<{ id: string }>;
-  searchParams: Record<string, string | string[] | undefined>;
-};
 
 interface EnquiryDetails {
   id: string;
@@ -27,23 +22,16 @@ interface EnquiryDetails {
   remarks: InquiryRemark[];
 }
 
-const EnquiryDetailsPage = (props: PageProps) => {
-  const [id, setId] = useState<string>('');
+const EnquiryDetailsPage = () => {
+  const params = useParams();
+  const id = Array.isArray(params.id) ? params.id[0] : params.id;
+  
   const [showAddProgress, setShowAddProgress] = React.useState(false);
   const [showAddRemark, setShowAddRemark] = React.useState(false);
-  
-  // Extract id from params Promise
-  useEffect(() => {
-    async function extractParams() {
-      const params = await props.params;
-      setId(params.id);
-    }
-    extractParams();
-  }, [props.params]);
 
   // Sample data - replace with actual data from your backend
   const enquiry: EnquiryDetails = {
-    id: id, // Use the ID from the route params
+    id: id as string, // Use the ID from the route params
     clientName: 'ER Mrugesh Prajapati',
     contactNumber: '+91 1234567890',
     propertyType: 'Unknown',
