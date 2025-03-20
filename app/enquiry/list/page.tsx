@@ -6,6 +6,7 @@ import SearchBar from '../../components/SearchBar';
 import StatusBadge from '../../components/StatusBadge';
 import Link from 'next/link';
 import { supabase } from '../../utils/supabase';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 interface Enquiry {
   id: number;
@@ -36,6 +37,8 @@ export default function EnquiryList() {
   const [filterSource, setFilterSource] = useState<string>('ALL');
   const [filterEmployee, setFilterEmployee] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
   // Function to fetch enquiries
   const fetchEnquiries = async (query: string, source: string, employee: string) => {
@@ -47,7 +50,20 @@ export default function EnquiryList() {
 
       // Apply search filter if query exists
       if (query) {
-        supabaseQuery = supabaseQuery.or(`Client Name.ilike.%${query}%,Mobile.ilike.%${query}%`);
+        // Check if the query contains comma-separated dates
+        if (query.includes(',')) {
+          const dates = query.split(',');
+          supabaseQuery = supabaseQuery.in('NFD', dates);
+        } else {
+          // Check if the query is a single date in DD/MM/YYYY format
+          const dateRegex = /^\d{2}\/\d{2}\/\d{4}$/;
+          if (dateRegex.test(query)) {
+            supabaseQuery = supabaseQuery.eq('NFD', query);
+          } else {
+            // Fix: Use proper format for OR conditions in Supabase
+            supabaseQuery = supabaseQuery.or(`"Client Name".ilike.%${query}%,"Mobile".ilike.%${query}%`);
+          }
+        }
       }
 
       // Apply source filter
@@ -85,11 +101,24 @@ export default function EnquiryList() {
     }
   };
 
+  // Effect to handle URL parameters
+  useEffect(() => {
+    const search = searchParams.get('search');
+    const category = searchParams.get('category');
+    
+    if (search) {
+      setSearchQuery(search);
+    } else if (category) {
+      // Handle category filtering if needed
+      console.log('Category:', category);
+    }
+  }, [searchParams]);
+
   // Effect to handle debounced search
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       fetchEnquiries(searchQuery, filterSource, filterEmployee);
-    }, 300); // 300ms debounce delay
+    }, 300);
 
     return () => {
       clearTimeout(timeoutId);
@@ -121,7 +150,8 @@ export default function EnquiryList() {
           <div className="mt-4">
             <SearchBar 
               onSearch={handleSearch} 
-              placeholder="Search by client name or phone number..." 
+              placeholder="Search by client name, phone number, or date (DD/MM/YYYY)..." 
+              defaultValue={searchQuery}
             />
           </div>
           

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Enquiry, DashboardStats } from './types';
+import { Enquiry, DashboardStats, InquirySource } from './types';
 import { getEnquiries } from './utils/localStorage';
 import { useInitializeData } from './utils/initializeData';
 import SearchBar from './components/SearchBar';
@@ -118,56 +118,200 @@ export default function Home() {
     }
   };
 
+  // Function to fetch today's enquiries from Supabase
+  const fetchTodaysEnquiries = async () => {
+    try {
+      // Get today's date in DD/MM/YYYY format
+      const today = new Date();
+      const formattedDate = `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}/${today.getFullYear()}`;
+      
+      const { data, error } = await supabase
+        .from('enquiries')
+        .select('*')
+        .eq('NFD', formattedDate);
+
+      if (error) throw error;
+
+      // Transform the data to match the Enquiry type
+      const transformedData: Enquiry[] = data.map(enquiry => ({
+        id: enquiry.id,
+        clientName: enquiry["Client Name"] || 'Unknown Client',
+        mobile: enquiry.Mobile || '',
+        configuration: enquiry.Configuration || '',
+        description: enquiry["Last Remarks"] || '',
+        status: enquiry["Enquiry Progress"]?.toLowerCase().includes('done') ? 'inactive' :
+                enquiry["Enquiry Progress"]?.toLowerCase().includes('cancelled') ? 'inactive' : 'active',
+        source: (enquiry["Enquiry Source"] || 'REF') as InquirySource,
+        assignedEmployee: enquiry["Assigned To"] || '',
+        dateCreated: enquiry["Created Date"] || new Date().toISOString(),
+        category: 'today'
+      }));
+
+      return transformedData;
+    } catch (error) {
+      console.error('Error fetching today\'s enquiries:', error);
+      return [];
+    }
+  };
+
+  // Function to fetch due enquiries from Supabase (NFD 1-2 days before today)
+  const fetchDueEnquiries = async () => {
+    try {
+      // Get current date
+      const today = new Date();
+      
+      // Get date 1 day before (yesterday)
+      const yesterday = new Date(today);
+      yesterday.setDate(today.getDate() - 1);
+      const yesterdayFormatted = `${String(yesterday.getDate()).padStart(2, '0')}/${String(yesterday.getMonth() + 1).padStart(2, '0')}/${yesterday.getFullYear()}`;
+      
+      // Get date 2 days before
+      const twoDaysAgo = new Date(today);
+      twoDaysAgo.setDate(today.getDate() - 2);
+      const twoDaysAgoFormatted = `${String(twoDaysAgo.getDate()).padStart(2, '0')}/${String(twoDaysAgo.getMonth() + 1).padStart(2, '0')}/${twoDaysAgo.getFullYear()}`;
+      
+      // Fetch enquiries where NFD is 1-2 days before today
+      const { data, error } = await supabase
+        .from('enquiries')
+        .select('*')
+        .in('NFD', [yesterdayFormatted, twoDaysAgoFormatted]);
+
+      if (error) throw error;
+      
+      // Transform the data to match the Enquiry type
+      const transformedData: Enquiry[] = data.map(enquiry => ({
+        id: enquiry.id,
+        clientName: enquiry["Client Name"] || 'Unknown Client',
+        mobile: enquiry.Mobile || '',
+        configuration: enquiry.Configuration || '',
+        description: enquiry["Last Remarks"] || '',
+        status: enquiry["Enquiry Progress"]?.toLowerCase().includes('done') ? 'inactive' :
+                enquiry["Enquiry Progress"]?.toLowerCase().includes('cancelled') ? 'inactive' : 'active',
+        source: (enquiry["Enquiry Source"] || 'REF') as InquirySource,
+        assignedEmployee: enquiry["Assigned To"] || '',
+        dateCreated: enquiry["Created Date"] || new Date().toISOString(),
+        category: 'due'
+      }));
+
+      return transformedData;
+    } catch (error) {
+      console.error('Error fetching due enquiries:', error);
+      return [];
+    }
+  };
+
+  // Function to fetch yesterday's enquiries from Supabase
+  const fetchYesterdaysEnquiries = async () => {
+    try {
+      // Get current date
+      const today = new Date();
+      
+      // Get yesterday's date
+      const yesterday = new Date(today);
+      yesterday.setDate(today.getDate() - 1);
+      const yesterdayFormatted = `${String(yesterday.getDate()).padStart(2, '0')}/${String(yesterday.getMonth() + 1).padStart(2, '0')}/${yesterday.getFullYear()}`;
+      
+      // Fetch enquiries where NFD is yesterday
+      const { data, error } = await supabase
+        .from('enquiries')
+        .select('*')
+        .eq('NFD', yesterdayFormatted);
+
+      if (error) throw error;
+      
+      // Transform the data to match the Enquiry type
+      const transformedData: Enquiry[] = data.map(enquiry => ({
+        id: enquiry.id,
+        clientName: enquiry["Client Name"] || 'Unknown Client',
+        mobile: enquiry.Mobile || '',
+        configuration: enquiry.Configuration || '',
+        description: enquiry["Last Remarks"] || '',
+        status: enquiry["Enquiry Progress"]?.toLowerCase().includes('done') ? 'inactive' :
+                enquiry["Enquiry Progress"]?.toLowerCase().includes('cancelled') ? 'inactive' : 'active',
+        source: (enquiry["Enquiry Source"] || 'REF') as InquirySource,
+        assignedEmployee: enquiry["Assigned To"] || '',
+        dateCreated: enquiry["Created Date"] || new Date().toISOString(),
+        category: 'yesterday'
+      }));
+
+      return transformedData;
+    } catch (error) {
+      console.error('Error fetching yesterday\'s enquiries:', error);
+      return [];
+    }
+  };
+
   // Load data when component mounts
   useEffect(() => {
     fetchEnquiryCounts();
   }, []);
 
-  // Load data from localStorage
+  // Load data from localStorage and Supabase
   useEffect(() => {
-    const enquiries = getEnquiries();
-    
-    // Categorize enquiries
-    const categorized = {
-      new: enquiries.filter(e => e.category === 'new'),
-      today: enquiries.filter(e => e.category === 'today'),
-      yesterday: enquiries.filter(e => e.category === 'yesterday'),
-      due: enquiries.filter(e => e.category === 'due'),
-      weekend: enquiries.filter(e => e.category === 'weekend')
-    };
-    
-    setCategorizedEnquiries(categorized);
+    const loadData = async () => {
+      try {
+        setIsLoading(true);
+        
+        // Get enquiries from localStorage
+        const localStorageEnquiries = getEnquiries();
+        
+        // Get today's enquiries from Supabase
+        const todaysEnquiries = await fetchTodaysEnquiries();
+        
+        // Get due enquiries from Supabase (1-2 days before today)
+        const dueEnquiries = await fetchDueEnquiries();
+        
+        // Get yesterday's enquiries from Supabase
+        const yesterdaysEnquiries = await fetchYesterdaysEnquiries();
+        
+        // Categorize enquiries
+        const categorized = {
+          new: localStorageEnquiries.filter(e => e.category === 'new'),
+          today: todaysEnquiries, // Use Supabase data for today's enquiries
+          yesterday: yesterdaysEnquiries, // Use Supabase data for yesterday's enquiries
+          due: dueEnquiries, // Use Supabase data for due enquiries
+          weekend: localStorageEnquiries.filter(e => e.category === 'weekend')
+        };
+        
+        setCategorizedEnquiries(categorized);
 
-    // Create sample activities
-    setActivities([
-      {
-        title: "New Enquiry Added",
-        description: "Raj Sharma - 2BHK in downtown area",
-        time: "Just now",
-        icon: "document"
-      },
-      {
-        title: "Site Visit Scheduled",
-        description: "Priya Patel - For 3BHK with garden",
-        time: "2 hours ago",
-        icon: "calendar"
-      },
-      {
-        title: "Property Listed",
-        description: "New 4BHK Luxury Apartment in City Center",
-        time: "Yesterday",
-        icon: "folder"
-      },
-      {
-        title: "Deal Closed",
-        description: "Amit Singh - 1BHK for ₹25,00,000",
-        time: "2 days ago",
-        icon: "currency"
+        // Create sample activities
+        setActivities([
+          {
+            title: "New Enquiry Added",
+            description: "Raj Sharma - 2BHK in downtown area",
+            time: "Just now",
+            icon: "document"
+          },
+          {
+            title: "Site Visit Scheduled",
+            description: "Priya Patel - For 3BHK with garden",
+            time: "2 hours ago",
+            icon: "calendar"
+          },
+          {
+            title: "Property Listed",
+            description: "New 4BHK Luxury Apartment in City Center",
+            time: "Yesterday",
+            icon: "folder"
+          },
+          {
+            title: "Deal Closed",
+            description: "Amit Singh - 1BHK for ₹25,00,000",
+            time: "2 days ago",
+            icon: "currency"
+          }
+        ]);
+
+        // Simulate loading for UI polish
+        setTimeout(() => setIsLoading(false), 500);
+      } catch (error) {
+        console.error('Error loading data:', error);
+        setIsLoading(false);
       }
-    ]);
+    };
 
-    // Simulate loading for UI polish
-    setTimeout(() => setIsLoading(false), 500);
+    loadData();
   }, []);
 
   const handleSearch = (query: string) => {
@@ -250,7 +394,7 @@ export default function Home() {
               title="Today's Site Visits" 
               value={stats.pendingSiteVisits}
               icon={<CalendarIcon />}
-              href="/site-visits"
+              href="/todays-site-visits"
               color="purple"
             />
             <StatCard 
@@ -416,8 +560,22 @@ const StatCard = ({ title, value, icon, href, color = 'default' }: {
     }
   };
 
+  // Get today's date in DD/MM/YYYY format
+  const getTodayDate = () => {
+    const today = new Date();
+    return `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}/${today.getFullYear()}`;
+  };
+
+  // Get the href with date parameter for Today's Site Visits
+  const getHref = () => {
+    if (title === "Today's Site Visits") {
+      return '/todays-site-visits';
+    }
+    return href || '#';
+  };
+
   return (
-    <Link href={href || '#'} className="block">
+    <Link href={getHref()} className="block">
       <div className={`p-6 rounded-xl border transition-transform duration-300 hover:scale-105 hover:shadow-md ${getColorClass()}`}>
         <div className="flex items-center gap-4">
           <div className="h-14 w-14 rounded-full bg-white/70 dark:bg-gray-800/70 flex items-center justify-center text-[#c69c6d]">
@@ -445,6 +603,40 @@ const CategoryCard = ({ title, count, icon, enquiries, colorClass }: {
     return title.toLowerCase();
   };
 
+  // Get today's date in DD/MM/YYYY format
+  const getTodayDate = () => {
+    const today = new Date();
+    return `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}/${today.getFullYear()}`;
+  };
+
+  // Get yesterday's date in DD/MM/YYYY format
+  const getYesterdayDate = () => {
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(today.getDate() - 1);
+    return `${String(yesterday.getDate()).padStart(2, '0')}/${String(yesterday.getMonth() + 1).padStart(2, '0')}/${yesterday.getFullYear()}`;
+  };
+
+  // Get two days ago date in DD/MM/YYYY format
+  const getTwoDaysAgoDate = () => {
+    const today = new Date();
+    const twoDaysAgo = new Date(today);
+    twoDaysAgo.setDate(today.getDate() - 2);
+    return `${String(twoDaysAgo.getDate()).padStart(2, '0')}/${String(twoDaysAgo.getMonth() + 1).padStart(2, '0')}/${twoDaysAgo.getFullYear()}`;
+  };
+
+  // Get the search parameter based on category
+  const getSearchParam = (title: string) => {
+    if (title === 'Today') {
+      return `?search=${getTodayDate()}`;
+    } else if (title === 'Due') {
+      return `?search=${getYesterdayDate()},${getTwoDaysAgoDate()}`;
+    } else if (title === 'Yesterday') {
+      return `?search=${getYesterdayDate()}`;
+    }
+    return `?category=${getCategoryValue(title)}`;
+  };
+
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
       case 'new':
@@ -460,9 +652,12 @@ const CategoryCard = ({ title, count, icon, enquiries, colorClass }: {
     }
   };
 
+  // Check if we should show only count for this category
+  const showOnlyCount = title === 'Today' || title === 'Due' || title === 'Yesterday';
+
   return (
     <Link 
-      href={`/enquiry/list?category=${getCategoryValue(title)}`}
+      href={`/enquiry/list${getSearchParam(title)}`}
       className={`premium-card overflow-hidden border transition-all hover:shadow-md ${colorClass}`}
     >
       <div className="p-5">
@@ -478,27 +673,34 @@ const CategoryCard = ({ title, count, icon, enquiries, colorClass }: {
           </div>
         </div>
         
-        <div className="space-y-3 mb-4">
-          {enquiries.slice(0, 2).map(enquiry => (
-            <div key={enquiry.id} className="p-2 rounded-lg bg-white/70 dark:bg-gray-800/70">
-              <div className="font-medium text-gray-800 dark:text-white truncate">{enquiry.clientName}</div>
-              <div className="flex justify-between items-center mt-1">
-                <div className="text-xs text-gray-500 dark:text-gray-400">{enquiry.configuration}</div>
-                <div className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(enquiry.status)}`}>
-                  {enquiry.status}
+        {showOnlyCount ? (
+          <div className="text-center py-6">
+            <div className="text-3xl font-bold text-gray-800 dark:text-white">{count}</div>
+            <div className="text-sm text-gray-500 dark:text-gray-400">Enquiries to follow up</div>
+          </div>
+        ) : (
+          <div className="space-y-3 mb-4">
+            {enquiries.slice(0, 2).map(enquiry => (
+              <div key={enquiry.id} className="p-2 rounded-lg bg-white/70 dark:bg-gray-800/70">
+                <div className="font-medium text-gray-800 dark:text-white truncate">{enquiry.clientName}</div>
+                <div className="flex justify-between items-center mt-1">
+                  <div className="text-xs text-gray-500 dark:text-gray-400">{enquiry.configuration}</div>
+                  <div className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(enquiry.status)}`}>
+                    {enquiry.status}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-          
-          {count === 0 && (
-            <div className="text-center py-4 text-gray-500 dark:text-gray-400 text-sm">
-              No enquiries in this category
-            </div>
-          )}
-        </div>
+            ))}
+            
+            {count === 0 && (
+              <div className="text-center py-4 text-gray-500 dark:text-gray-400 text-sm">
+                No enquiries in this category
+              </div>
+            )}
+          </div>
+        )}
         
-        {count > 2 && (
+        {!showOnlyCount && count > 2 && (
           <div 
             className="text-xs text-[#1a2e29] dark:text-[#c69c6d] font-medium hover:underline block text-center"
           >

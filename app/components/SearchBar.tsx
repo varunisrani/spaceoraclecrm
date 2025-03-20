@@ -5,13 +5,23 @@ import React, { useState } from 'react';
 interface SearchBarProps {
   onSearch: (query: string) => void;
   placeholder?: string;
+  defaultValue?: string;
 }
 
-export default function SearchBar({ onSearch, placeholder = 'Search enquiries...' }: SearchBarProps) {
+export default function SearchBar({ onSearch, placeholder = 'Search enquiries...', defaultValue = '' }: SearchBarProps) {
   const [isFocused, setIsFocused] = useState(false);
+  const [value, setValue] = useState(defaultValue);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onSearch(e.target.value);
+    const newValue = e.target.value;
+    setValue(newValue);
+    const cleanValue = newValue.trim();
+    onSearch(cleanValue);
+  };
+
+  const handleQuickFilter = (filterValue: string) => {
+    setValue(filterValue);
+    onSearch(filterValue);
   };
 
   return (
@@ -40,6 +50,7 @@ export default function SearchBar({ onSearch, placeholder = 'Search enquiries...
             shadow-sm focus:outline-none focus:ring-2 focus:ring-[#c69c6d] focus:border-transparent 
             transition-all duration-300 ${isFocused ? 'shadow-md' : ''}`}
           placeholder={placeholder}
+          value={value}
           onChange={handleInputChange}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
@@ -52,7 +63,7 @@ export default function SearchBar({ onSearch, placeholder = 'Search enquiries...
           className="text-xs px-3 py-1 rounded-full border border-gray-200 dark:border-gray-700 
             text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 
             transition-colors"
-          onClick={() => onSearch("today")}
+          onClick={() => handleQuickFilter("today")}
         >
           Today
         </button>
@@ -60,7 +71,7 @@ export default function SearchBar({ onSearch, placeholder = 'Search enquiries...
           className="text-xs px-3 py-1 rounded-full border border-gray-200 dark:border-gray-700 
             text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 
             transition-colors"
-          onClick={() => onSearch("new")}
+          onClick={() => handleQuickFilter("new")}
         >
           New
         </button>
@@ -68,7 +79,7 @@ export default function SearchBar({ onSearch, placeholder = 'Search enquiries...
           className="text-xs px-3 py-1 rounded-full border border-gray-200 dark:border-gray-700 
             text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 
             transition-colors"
-          onClick={() => onSearch("due")}
+          onClick={() => handleQuickFilter("due")}
         >
           Due
         </button>

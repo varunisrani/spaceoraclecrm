@@ -1,9 +1,22 @@
 import React from 'react';
-import { SiteVisitStatus } from '../types/inquiry';
 import Link from 'next/link';
 
+interface SiteVisit {
+  id: string;
+  inquiryId: string;
+  clientName: string;
+  scheduledDate: string;
+  status: 'scheduled' | 'done' | 'cancelled';
+  remarks: string;
+  assignedTo: string;
+  createdBy: string;
+  updatedBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 interface SiteVisitListProps {
-  siteVisits: SiteVisitStatus[];
+  siteVisits: SiteVisit[];
   onMarkCompleted: (id: string) => void;
   onCancel: (id: string) => void;
 }
@@ -78,8 +91,8 @@ const SiteVisitList: React.FC<SiteVisitListProps> = ({
                     visit.status === 'cancelled' ? 'bg-red-100 text-red-800 dark:bg-red-900/20' : 
                     'bg-green-100 text-green-800 dark:bg-green-900/20'}`}>
                   {visit.status === 'done' ? 'Completed' :
-                   visit.status === 'cancelled' ? 'Cancelled' : 
-                   'Scheduled'}
+                    visit.status === 'cancelled' ? 'Cancelled' : 
+                    'Scheduled'}
                 </div>
               </td>
               <td>

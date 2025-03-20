@@ -170,16 +170,15 @@ export default function NewEnquiry() {
               <label htmlFor="Area" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Area
               </label>
-              <select
+              <input
+                type="text"
                 id="Area"
                 name="Area"
                 value={formData["Area"]}
                 onChange={handleChange}
                 className="premium-input w-full"
-              >
-                <option value="bhopal">Bhopal</option>
-                <option value="sindhupan">Sindhupan</option>
-              </select>
+                placeholder="Enter area name"
+              />
             </div>
 
             {/* Description */}
