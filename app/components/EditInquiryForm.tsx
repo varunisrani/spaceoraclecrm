@@ -1,6 +1,10 @@
 import React from 'react';
 import { Enquiry } from '../types';
 
+// Create type aliases for the Enquiry fields to match the interface
+type InquirySource = 'REF' | 'FACEBOOK' | 'SB-VAISHNO' | 'PORTAL';
+type InquiryStatus = 'active' | 'inactive' | 'new' | 'due' | 'in_progress' | 'site_visit_scheduled' | 'site_visit_done' | 'deal_succeeded' | 'deal_lost';
+
 interface EditInquiryFormProps {
   inquiry: Enquiry;
   onSave: (updatedInquiry: Enquiry) => void;
@@ -73,7 +77,7 @@ const EditInquiryForm: React.FC<EditInquiryFormProps> = ({
               <label className="block text-sm font-medium text-gray-700">Source</label>
               <select
                 value={formData.source}
-                onChange={(e) => setFormData(prev => ({ ...prev, source: e.target.value }))}
+                onChange={(e) => setFormData(prev => ({ ...prev, source: e.target.value as InquirySource }))}
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 required
               >
@@ -113,7 +117,7 @@ const EditInquiryForm: React.FC<EditInquiryFormProps> = ({
               <label className="block text-sm font-medium text-gray-700">Status</label>
               <select
                 value={formData.status}
-                onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value }))}
+                onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value as InquiryStatus }))}
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 required
               >
