@@ -27,7 +27,7 @@ interface EnquiryDetails {
   remarks: InquiryRemark[];
 }
 
-const EnquiryDetailsPage = ({ params, searchParams }: PageProps) => {
+const EnquiryDetailsPage = ({ params, searchParams: _searchParams }: PageProps) => {
   // Sample data - replace with actual data from your backend
   const enquiry: EnquiryDetails = {
     id: params.id, // Use the ID from the route params

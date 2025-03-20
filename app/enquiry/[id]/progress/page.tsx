@@ -67,7 +67,7 @@ type PageProps = {
   searchParams: Record<string, string | string[] | undefined>;
 };
 
-export default function InquiryProgressPage({ params, searchParams }: PageProps) {
+export default function InquiryProgressPage({ params, searchParams: _searchParams }: PageProps) {
   const { id } = params;
   const [progressHistory, setProgressHistory] = React.useState<InquiryProgressData[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
