@@ -13,7 +13,7 @@ type PageProps = {
   searchParams: Record<string, string | string[] | undefined>;
 };
 
-export default function EditEnquiry({ params, searchParams: _searchParams }: PageProps) {
+export default function EditEnquiry({ params }: PageProps) {
   const { id } = params;
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
