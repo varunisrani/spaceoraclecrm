@@ -1,12 +1,10 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
-import { useInitializeData } from '../../utils/initializeData';
+import { useEffect, useState } from 'react';
 import SearchBar from '../../components/SearchBar';
-import StatusBadge from '../../components/StatusBadge';
 import Link from 'next/link';
 import { supabase } from '../../utils/supabase';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 
 interface Enquiry {
   id: number;
@@ -37,7 +35,6 @@ export default function EnquiryList() {
   const [filterSource, setFilterSource] = useState<string>('ALL');
   const [filterEmployee, setFilterEmployee] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const router = useRouter();
   const searchParams = useSearchParams();
 
   // Function to fetch enquiries

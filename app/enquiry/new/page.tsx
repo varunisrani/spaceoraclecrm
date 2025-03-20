@@ -30,7 +30,7 @@ export default function NewEnquiry() {
       setIsSaving(true);
       
       // Insert into Supabase
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('enquiries')
         .insert([formData]);
 

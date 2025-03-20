@@ -559,12 +559,6 @@ const StatCard = ({ title, value, icon, href, color = 'default' }: {
     }
   };
 
-  // Get today's date in DD/MM/YYYY format
-  const getTodayDate = () => {
-    const today = new Date();
-    return `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}/${today.getFullYear()}`;
-  };
-
   // Get the href with date parameter for Today's Site Visits
   const getHref = () => {
     if (title === "Today's Site Visits") {

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Link from "next/link";
 import "./globals.css";
 import Navbar from "./components/Navbar";
 
@@ -54,10 +55,10 @@ export default function RootLayout({
                 <div>
                   <h3 className="text-[#c69c6d] font-medium mb-4">Quick Links</h3>
                   <ul className="space-y-2 text-sm">
-                    <li><a href="/" className="text-gray-300 hover:text-white transition-colors">Dashboard</a></li>
-                    <li><a href="/enquiry/new" className="text-gray-300 hover:text-white transition-colors">New Enquiry</a></li>
-                    <li><a href="/enquiry/list" className="text-gray-300 hover:text-white transition-colors">Enquiries</a></li>
-                    <li><a href="/site-visits" className="text-gray-300 hover:text-white transition-colors">Site Visits</a></li>
+                    <li><Link href="/" className="text-gray-300 hover:text-white transition-colors">Dashboard</Link></li>
+                    <li><Link href="/enquiry/new" className="text-gray-300 hover:text-white transition-colors">New Enquiry</Link></li>
+                    <li><Link href="/enquiry/list" className="text-gray-300 hover:text-white transition-colors">Enquiries</Link></li>
+                    <li><Link href="/site-visits" className="text-gray-300 hover:text-white transition-colors">Site Visits</Link></li>
                   </ul>
                 </div>
                 <div>
