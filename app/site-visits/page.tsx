@@ -3,131 +3,110 @@
 import React from 'react';
 import SiteVisitList from '../components/SiteVisitList';
 import ScheduleVisitForm from '../components/ScheduleVisitForm';
-import { SiteVisitStatus } from '../types/inquiry';
-import { addSiteVisit } from '../utils/localStorage';
+import { supabase } from '../utils/supabase';
 
-// Sample demo data
-const demoSiteVisits: SiteVisitStatus[] = [
-  {
-    id: '1',
-    inquiryId: 'INQ001',
-    clientName: 'Raj Sharma',
-    scheduledDate: new Date(new Date().setHours(10, 0)).toISOString(),
-    status: 'scheduled',
-    remarks: 'Interested in 3BHK property',
-    assignedTo: 'Rajdeep',
-    createdBy: 'System',
-    updatedBy: 'System',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  },
-  {
-    id: '2',
-    inquiryId: 'INQ002',
-    clientName: 'Priya Patel',
-    scheduledDate: new Date(new Date().setHours(14, 30)).toISOString(),
-    status: 'scheduled',
-    remarks: 'Looking for 2BHK with garden view',
-    assignedTo: 'Rushiraj',
-    createdBy: 'System',
-    updatedBy: 'System',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  },
-  {
-    id: '3',
-    inquiryId: 'INQ003',
-    clientName: 'Amit Singh',
-    scheduledDate: new Date(new Date().setHours(16, 0)).toISOString(),
-    status: 'done',
-    remarks: 'Client liked the property, discussing payment terms',
-    assignedTo: 'Mantik',
-    createdBy: 'System',
-    updatedBy: 'System',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  },
-  {
-    id: '4',
-    inquiryId: 'INQ004',
-    clientName: 'Meera Shah',
-    scheduledDate: new Date(new Date().setHours(11, 30)).toISOString(),
-    status: 'cancelled',
-    remarks: 'Client rescheduled for next week',
-    assignedTo: 'Rajdeep',
-    createdBy: 'System',
-    updatedBy: 'System',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  },
-  {
-    id: '5',
-    inquiryId: 'INQ005',
-    clientName: 'Karan Mehta',
-    scheduledDate: new Date(new Date().setHours(15, 0)).toISOString(),
-    status: 'scheduled',
-    remarks: 'Second visit to finalize the deal',
-    assignedTo: 'Rushiraj',
-    createdBy: 'System',
-    updatedBy: 'System',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  }
-];
+interface SiteVisit {
+  id: string;
+  inquiryId: string;
+  clientName: string;
+  scheduledDate: string;
+  status: 'scheduled' | 'done' | 'cancelled';
+  remarks: string;
+  assignedTo: string;
+  createdBy: string;
+  updatedBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
 export default function SiteVisitsPage() {
   const [showScheduleForm, setShowScheduleForm] = React.useState(false);
-  const [siteVisits, setSiteVisits] = React.useState<SiteVisitStatus[]>(demoSiteVisits);
+  const [siteVisits, setSiteVisits] = React.useState<SiteVisit[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
 
-  // Load site visits from localStorage or use demo data if none exists
-  React.useEffect(() => {
-    const storedVisits = localStorage.getItem('siteVisits');
-    if (storedVisits) {
-      const parsedVisits = JSON.parse(storedVisits);
-      setSiteVisits(parsedVisits);
-    } else {
-      // Initialize with demo data if no stored visits exist
-      localStorage.setItem('siteVisits', JSON.stringify(demoSiteVisits));
+  const fetchSiteVisits = async () => {
+    try {
+      setIsLoading(true);
+      
+      // Fetch all enquiries
+      const { data: enquiries, error: enquiriesError } = await supabase
+        .from('enquiries')
+        .select('*');
+
+      if (enquiriesError) throw enquiriesError;
+
+      // Filter and transform enquiries into site visits
+      const visits: SiteVisit[] = enquiries
+        .filter(enquiry => 
+          enquiry["Enquiry Progress"]?.toLowerCase().includes('site visit') ||
+          enquiry["Last Remarks"]?.toLowerCase().includes('site visit')
+        )
+        .map(enquiry => ({
+          id: enquiry.id,
+          inquiryId: enquiry.id,
+          clientName: enquiry["Client Name"] || 'Unknown Client',
+          scheduledDate: enquiry["NFD"] || new Date().toISOString(), // Using Next Follow-up Date as scheduled date
+          status: enquiry["Enquiry Progress"]?.toLowerCase().includes('done') ? 'done' :
+                 enquiry["Enquiry Progress"]?.toLowerCase().includes('cancelled') ? 'cancelled' : 'scheduled',
+          remarks: enquiry["Last Remarks"] || '',
+          assignedTo: enquiry["Assigned To"] || 'Unassigned',
+          createdBy: enquiry["Created By"] || 'System',
+          updatedBy: enquiry["Updated By"] || 'System',
+          createdAt: enquiry["Created Date"] || new Date().toISOString(),
+          updatedAt: enquiry["Updated Date"] || new Date().toISOString()
+        }));
+
+      setSiteVisits(visits);
+    } catch (error) {
+      console.error('Error fetching site visits:', error);
+    } finally {
+      setIsLoading(false);
     }
+  };
+
+  // Fetch site visits when component mounts
+  React.useEffect(() => {
+    fetchSiteVisits();
   }, []);
 
-  const handleMarkCompleted = (id: string) => {
-    const updatedVisits = siteVisits.map(visit => 
-      visit.id === id ? { 
-        ...visit, 
-        status: 'done' as const,
-        updatedAt: new Date().toISOString()
-      } : visit
-    );
-    setSiteVisits(updatedVisits);
-    localStorage.setItem('siteVisits', JSON.stringify(updatedVisits));
+  const handleMarkCompleted = async (id: string) => {
+    try {
+      // Update the enquiry status
+      const { error } = await supabase
+        .from('enquiries')
+        .update({
+          "Enquiry Progress": "Site Visit Done",
+          "Updated Date": new Date().toISOString()
+        })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      // Refresh the site visits list
+      await fetchSiteVisits();
+    } catch (error) {
+      console.error('Error marking visit as completed:', error);
+    }
   };
 
-  const handleCancel = (id: string) => {
-    const updatedVisits = siteVisits.map(visit => 
-      visit.id === id ? { 
-        ...visit, 
-        status: 'cancelled' as const,
-        updatedAt: new Date().toISOString()
-      } : visit
-    );
-    setSiteVisits(updatedVisits);
-    localStorage.setItem('siteVisits', JSON.stringify(updatedVisits));
-  };
+  const handleCancel = async (id: string) => {
+    try {
+      // Update the enquiry status
+      const { error } = await supabase
+        .from('enquiries')
+        .update({
+          "Enquiry Progress": "Site Visit Cancelled",
+          "Updated Date": new Date().toISOString()
+        })
+        .eq('id', id);
 
-  const handleScheduleVisit = (visit: Omit<SiteVisitStatus, 'id' | 'createdAt' | 'updatedAt' | 'createdBy' | 'updatedBy'>) => {
-    const newVisit: SiteVisitStatus = {
-      ...visit,
-      id: Date.now().toString(),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      createdBy: 'System',
-      updatedBy: 'System'
-    };
-    
-    const updatedVisits = [...siteVisits, newVisit];
-    setSiteVisits(updatedVisits);
-    localStorage.setItem('siteVisits', JSON.stringify(updatedVisits));
+      if (error) throw error;
+
+      // Refresh the site visits list
+      await fetchSiteVisits();
+    } catch (error) {
+      console.error('Error cancelling visit:', error);
+    }
   };
 
   return (
@@ -161,18 +140,45 @@ export default function SiteVisitsPage() {
             </div>
           </div>
 
-          <SiteVisitList 
-            siteVisits={siteVisits}
-            onMarkCompleted={handleMarkCompleted}
-            onCancel={handleCancel}
-          />
+          {isLoading ? (
+            <div className="flex justify-center items-center py-16">
+              <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-[#c69c6d]"></div>
+            </div>
+          ) : (
+            <SiteVisitList 
+              siteVisits={siteVisits}
+              onMarkCompleted={handleMarkCompleted}
+              onCancel={handleCancel}
+            />
+          )}
         </div>
       </div>
 
       {showScheduleForm && (
         <ScheduleVisitForm
           onClose={() => setShowScheduleForm(false)}
-          onSubmit={handleScheduleVisit}
+          onSubmit={async (visit) => {
+            try {
+              // Update the enquiry with site visit details
+              const { error } = await supabase
+                .from('enquiries')
+                .update({
+                  "Enquiry Progress": "Site Visit Scheduled",
+                  "Last Remarks": visit.remarks,
+                  "NFD": visit.scheduledDate,
+                  "Updated Date": new Date().toISOString()
+                })
+                .eq('id', visit.inquiryId);
+
+              if (error) throw error;
+
+              // Refresh the site visits list
+              await fetchSiteVisits();
+              setShowScheduleForm(false);
+            } catch (error) {
+              console.error('Error scheduling visit:', error);
+            }
+          }}
         />
       )}
     </div>

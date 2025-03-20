@@ -49,14 +49,14 @@ const SiteVisitList: React.FC<SiteVisitListProps> = ({
                   <div>
                     <div className={`font-medium ${getNameColor(visit.status)}`}>{visit.clientName}</div>
                     <div className="text-xs text-gray-500 dark:text-gray-400">
-                      {visit.scheduledDate.toLocaleDateString()}
+                      {new Date(visit.scheduledDate).toLocaleDateString()}
                     </div>
                   </div>
                 </div>
               </td>
               <td>
                 <div className="text-sm">
-                  {visit.scheduledDate.toLocaleTimeString([], { 
+                  {new Date(visit.scheduledDate).toLocaleTimeString([], { 
                     hour: '2-digit', 
                     minute: '2-digit' 
                   })}

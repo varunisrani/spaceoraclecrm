@@ -1,65 +1,73 @@
 import React from 'react';
-import { SiteVisitStatus } from '../types/inquiry';
-import { Enquiry } from '../types';
-import { getEnquiries } from '../utils/localStorage';
+import { supabase } from '../utils/supabase';
 
 interface ScheduleVisitFormProps {
   onClose: () => void;
-  onSubmit: (visit: Omit<SiteVisitStatus, 'id' | 'createdAt' | 'updatedAt' | 'createdBy' | 'updatedBy'>) => void;
+  onSubmit: (visit: {
+    inquiryId: string;
+    scheduledDate: string;
+    remarks: string;
+  }) => void;
 }
 
 export default function ScheduleVisitForm({ onClose, onSubmit }: ScheduleVisitFormProps) {
-  const [enquiries, setEnquiries] = React.useState<Enquiry[]>([]);
+  const [isSaving, setIsSaving] = React.useState(false);
   const [formData, setFormData] = React.useState({
     inquiryId: '',
-    clientName: '',
     scheduledDate: '',
-    scheduledTime: '',
-    status: 'scheduled' as const,
-    remarks: '',
-    assignedTo: 'Rajdeep',
+    remarks: ''
   });
+  const [enquiries, setEnquiries] = React.useState<Array<{ id: string; "Client Name": string }>>([]);
 
-  // Load enquiries when component mounts
+  // Fetch enquiries when component mounts
   React.useEffect(() => {
-    const allEnquiries = getEnquiries();
-    setEnquiries(allEnquiries);
+    const fetchEnquiries = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('enquiries')
+          .select('id, "Client Name"')
+          .order('Created Date', { ascending: false });
+
+        if (error) throw error;
+        setEnquiries(data || []);
+      } catch (error) {
+        console.error('Error fetching enquiries:', error);
+      }
+    };
+
+    fetchEnquiries();
   }, []);
 
-  const handleEnquiryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const selectedEnquiry = enquiries.find(enq => enq.id === e.target.value);
-    if (selectedEnquiry) {
-      setFormData(prev => ({
-        ...prev,
-        inquiryId: selectedEnquiry.id,
-        clientName: selectedEnquiry.clientName,
-        assignedTo: selectedEnquiry.assignedEmployee
-      }));
-    }
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Combine date and time into a string
-    const scheduledDateTime = `${formData.scheduledDate}T${formData.scheduledTime}`;
-    
-    onSubmit({
-      inquiryId: formData.inquiryId,
-      clientName: formData.clientName,
-      scheduledDate: scheduledDateTime,
-      status: formData.status,
-      remarks: formData.remarks,
-      assignedTo: formData.assignedTo,
-    });
-    
-    onClose();
+    try {
+      setIsSaving(true);
+      await onSubmit(formData);
+    } catch (error) {
+      console.error('Error scheduling visit:', error);
+      if (error instanceof Error) {
+        alert(`Error scheduling visit: ${error.message}`);
+      } else {
+        alert('Error scheduling visit. Please try again.');
+      }
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-lg max-w-2xl w-full p-6">
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-bold">Schedule New Site Visit</h2>
           <button
             onClick={onClose}
@@ -70,110 +78,72 @@ export default function ScheduleVisitForm({ onClose, onSubmit }: ScheduleVisitFo
             </svg>
           </button>
         </div>
-
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Select Enquiry
-            </label>
+            <label className="block text-sm font-medium text-gray-700">Select Client</label>
             <select
+              name="inquiryId"
               value={formData.inquiryId}
-              onChange={handleEnquiryChange}
-              className="premium-input w-full"
+              onChange={handleInputChange}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               required
             >
-              <option value="">Select an enquiry</option>
+              <option value="">Select a client...</option>
               {enquiries.map(enquiry => (
                 <option key={enquiry.id} value={enquiry.id}>
-                  {enquiry.clientName} - {enquiry.configuration} ({enquiry.mobile})
+                  {enquiry["Client Name"]}
                 </option>
               ))}
             </select>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Client Name
-              </label>
-              <input
-                type="text"
-                value={formData.clientName}
-                readOnly
-                className="premium-input w-full bg-gray-50"
-                placeholder="Client name will be auto-filled"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Assigned To
-              </label>
-              <input
-                type="text"
-                value={formData.assignedTo}
-                readOnly
-                className="premium-input w-full bg-gray-50"
-                placeholder="Will be auto-assigned"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Visit Date
-              </label>
-              <input
-                type="date"
-                value={formData.scheduledDate}
-                onChange={(e) => setFormData(prev => ({ ...prev, scheduledDate: e.target.value }))}
-                className="premium-input w-full"
-                required
-                min={new Date().toISOString().split('T')[0]}
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Visit Time
-              </label>
-              <input
-                type="time"
-                value={formData.scheduledTime}
-                onChange={(e) => setFormData(prev => ({ ...prev, scheduledTime: e.target.value }))}
-                className="premium-input w-full"
-                required
-              />
-            </div>
-          </div>
-
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Remarks
-            </label>
-            <textarea
+            <label className="block text-sm font-medium text-gray-700">Visit Date</label>
+            <input 
+              type="date"
+              name="scheduledDate"
+              value={formData.scheduledDate}
+              onChange={handleInputChange}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              required
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Remarks</label>
+            <textarea 
+              name="remarks"
               value={formData.remarks}
-              onChange={(e) => setFormData(prev => ({ ...prev, remarks: e.target.value }))}
-              className="premium-input w-full"
+              onChange={handleInputChange}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               rows={3}
-              placeholder="Add any remarks about the site visit..."
+              placeholder="Enter remarks..."
+              required
             />
           </div>
 
-          <div className="flex justify-end space-x-4 pt-4">
+          <div className="flex justify-end space-x-2 mt-6">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+              disabled={isSaving}
+              className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="premium-button"
+              disabled={isSaving}
+              className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 flex items-center gap-2"
             >
-              Schedule Visit
+              {isSaving ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
+                  Saving...
+                </>
+              ) : (
+                'Schedule Visit'
+              )}
             </button>
           </div>
         </form>

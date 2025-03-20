@@ -35,6 +35,7 @@ const getProgressTypeColor = (type: InquiryProgressType): string => {
 interface InquiryData {
   "Remarks": string;
   "Last Remarks": string;
+  "Client Name": string;
 }
 
 type InquiryProgressType = 
@@ -75,10 +76,10 @@ export default function InquiryProgressPage({ params }: PageParams) {
     try {
       setIsLoading(true);
       
-      // Fetch old enquiry remarks
+      // Fetch old enquiry remarks and client name
       const { data: enquiryData, error: enquiryError } = await supabase
         .from('enquiries')
-        .select('Remarks, "Last Remarks"')
+        .select('Remarks, "Last Remarks", "Client Name"')
         .eq('id', id)
         .single();
 
@@ -86,7 +87,8 @@ export default function InquiryProgressPage({ params }: PageParams) {
       
       const typedData: InquiryData = {
         "Remarks": enquiryData?.Remarks || '',
-        "Last Remarks": enquiryData?.["Last Remarks"] || ''
+        "Last Remarks": enquiryData?.["Last Remarks"] || '',
+        "Client Name": enquiryData?.["Client Name"] || ''
       };
       
       setInquiryData(typedData);
@@ -158,6 +160,9 @@ export default function InquiryProgressPage({ params }: PageParams) {
               ← Back to Enquiry Details
             </Link>
             <h1 className="text-2xl font-bold">Inquiry Progress History</h1>
+            {inquiryData && (
+              <p className="text-gray-600 mt-1">Client: {inquiryData["Client Name"]}</p>
+            )}
           </div>
           <button
             onClick={() => setShowAddProgress(true)}

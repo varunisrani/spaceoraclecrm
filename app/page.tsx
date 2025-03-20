@@ -85,22 +85,32 @@ export default function Home() {
 
       if (newError) throw newError;
 
-      // Get today's site visits
+      // Get today's site visits from Inquiry_Progress table
       const today = new Date();
       const formattedDate = `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}/${today.getFullYear()}`;
       
       const { count: siteVisitsCount, error: siteVisitsError } = await supabase
-        .from('enquiries')
+        .from('Inquiry_Progress')
         .select('*', { count: 'exact', head: true })
-        .eq('Site Visit Scheduled Date', formattedDate);
+        .eq('progress_type', 'site_visit_schedule')
+        .eq('date', formattedDate);
 
       if (siteVisitsError) throw siteVisitsError;
+
+      // Get total deals done count from Inquiry_Progress table
+      const { count: dealsDoneCount, error: dealsError } = await supabase
+        .from('Inquiry_Progress')
+        .select('*', { count: 'exact', head: true })
+        .eq('progress_type', 'deal_done');
+
+      if (dealsError) throw dealsError;
 
       setStats(prev => ({
         ...prev,
         totalEnquiries: totalCount || 0,
         newEnquiries: newCount || 0,
-        pendingSiteVisits: siteVisitsCount || 0
+        pendingSiteVisits: siteVisitsCount || 0,
+        totalSales: dealsDoneCount || 0
       }));
 
     } catch (error) {
