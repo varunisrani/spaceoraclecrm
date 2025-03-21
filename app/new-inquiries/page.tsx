@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '../utils/supabase';
-import { InquirySource } from '../types';
 
 interface Inquiry {
   id: string | number;
@@ -40,7 +39,7 @@ interface EnquiryRecord {
   Configuration?: string;
   "Last Remarks"?: string;
   Remarks?: string;
-  [key: string]: any;  // For other potential fields
+  [key: string]: string | number | undefined;  // Replace any with more specific types
 }
 
 export default function NewInquiries() {
@@ -81,7 +80,7 @@ export default function NewInquiries() {
         status: enquiry["Enquiry Progress"] || 'New',
         source: enquiry["Enquiry Source"] || 'Unknown',
         assignedEmployee: enquiry["Assigned To"] || '',
-        dateCreated: enquiry["Created Date"] || enquiry.created_at || new Date().toISOString(),
+        dateCreated: String(enquiry["Created Date"] || enquiry.created_at || new Date().toISOString()),
         budget: enquiry.Budget || '',
         area: enquiry.Area || '',
         lastRemarks: enquiry["Last Remarks"] || '',
@@ -115,6 +114,8 @@ export default function NewInquiries() {
     );
   };
 
+  // Defined but unused - kept for future use
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const getStatusColor = (status: string): string => {
     const lowerStatus = status.toLowerCase();
     if (lowerStatus.includes('new')) {
@@ -141,7 +142,7 @@ export default function NewInquiries() {
             <div>
               <h1 className="text-3xl font-bold mb-2">New Inquiries</h1>
               <p className="text-[#e5d0b1] max-w-2xl">
-                All recently added inquiries with 'New' status
+                All recently added inquiries with &apos;New&apos; status
               </p>
             </div>
             <Link 
@@ -271,7 +272,7 @@ export default function NewInquiries() {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
                         </svg>
                         <h3 className="text-lg font-medium mb-1">No new inquiries found</h3>
-                        <p className="text-gray-500 dark:text-gray-400 mb-4">There are no inquiries with 'New' status</p>
+                        <p className="text-gray-500 dark:text-gray-400 mb-4">There are no inquiries with &apos;New&apos; status</p>
                       </div>
                     </td>
                   </tr>

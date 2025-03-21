@@ -674,9 +674,16 @@ const CategoryCard = ({ title, count, icon, enquiries, colorClass }: {
   enquiries: Enquiry[];
   colorClass: string;
 }) => {
+  // Create a type that extends Enquiry with optional progressType
+  type EnquiryWithProgress = Enquiry & { progressType?: string };
+  
   // Add debug logging for this component
   console.log(`Rendering CategoryCard for "${title}" with ${count} enquiries:`, 
-    enquiries.map(e => ({ id: e.id, clientName: e.clientName, progressType: (e as any).progressType })));
+    enquiries.map(e => ({ 
+      id: e.id, 
+      clientName: e.clientName, 
+      progressType: (e as EnquiryWithProgress).progressType 
+    })));
   
   // Convert title to category value for filtering
   const getCategoryValue = (title: string) => {
