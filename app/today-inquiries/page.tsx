@@ -225,12 +225,6 @@ export default function TodayInquiries() {
     setSearchQuery(query);
   };
 
-  const getProgressTypeLabel = (type: string = ''): string => {
-    return type.split('_').map(word => 
-      word.charAt(0).toUpperCase() + word.slice(1)
-    ).join(' ');
-  };
-
   const getProgressTypeColor = (type: string = ''): string => {
     if (type.includes('site_visit')) {
       return 'bg-green-100 text-green-800';

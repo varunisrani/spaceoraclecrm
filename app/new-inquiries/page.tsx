@@ -125,26 +125,6 @@ export default function NewInquiries() {
     setSearchQuery(query);
   };
 
-  const getSourceBadge = (source: string) => {
-    let colorClass = 'bg-blue-100 text-blue-800';
-    
-    if (source.includes('FACEBOOK') || source.includes('Facebook')) {
-      colorClass = 'bg-indigo-100 text-indigo-800';
-    } else if (source.includes('REF') || source.includes('Reference')) {
-      colorClass = 'bg-green-100 text-green-800';
-    } else if (source.includes('PORTAL')) {
-      colorClass = 'bg-purple-100 text-purple-800';
-    }
-    
-    return (
-      <span className={`px-2 py-1 rounded-full text-xs font-medium ${colorClass}`}>
-        {source}
-      </span>
-    );
-  };
-
-  // Defined but unused - kept for future use
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const getStatusColor = (status: string): string => {
     const lowerStatus = status.toLowerCase();
     if (lowerStatus.includes('new')) {

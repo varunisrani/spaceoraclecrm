@@ -705,26 +705,9 @@ const CategoryCard = ({ title, count, icon, enquiries, colorClass }: {
   };
 
   // Get today's date in DD/MM/YYYY format
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const getTodayDate = () => {
     const today = new Date();
     return `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}/${today.getFullYear()}`;
-  };
-
-  // Get yesterday's date in DD/MM/YYYY format
-  const getYesterdayDate = () => {
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(today.getDate() - 1);
-    return `${String(yesterday.getDate()).padStart(2, '0')}/${String(yesterday.getMonth() + 1).padStart(2, '0')}/${yesterday.getFullYear()}`;
-  };
-
-  // Get two days ago date in DD/MM/YYYY format
-  const getTwoDaysAgoDate = () => {
-    const today = new Date();
-    const twoDaysAgo = new Date(today);
-    twoDaysAgo.setDate(today.getDate() - 2);
-    return `${String(twoDaysAgo.getDate()).padStart(2, '0')}/${String(twoDaysAgo.getMonth() + 1).padStart(2, '0')}/${twoDaysAgo.getFullYear()}`;
   };
 
   // Get the search parameter based on category

@@ -67,7 +67,15 @@ export default function EnquiryList() {
   const fetchEnquiries = async (query: string, source: string, employee: string, category?: string) => {
     try {
       setIsLoading(true);
-      console.log('Fetching enquiries with params:', { query, source, employee, category });
+      
+      // Get yesterday's date in DD/MM/YYYY format
+      const today = new Date();
+      const yesterday = new Date(today);
+      yesterday.setDate(today.getDate() - 1);
+      // Comment out or remove this line to fix the ESLint error
+      // const yesterdayFormatted = `${String(yesterday.getDate()).padStart(2, '0')}/${String(yesterday.getMonth() + 1).padStart(2, '0')}/${yesterday.getFullYear()}`;
+      
+      console.log('Fetching enquiries with query:', query, 'source:', source, 'employee:', employee, 'category:', category);
       
       let supabaseQuery = supabase
         .from('enquiries')
@@ -79,12 +87,6 @@ export default function EnquiryList() {
       // Apply category filter for 'due' - dates earlier than yesterday
       if (category === 'due') {
         console.log('Filtering for due category (dates earlier than yesterday)');
-        
-        // Get yesterday's date in DD/MM/YYYY format
-        const today = new Date();
-        const yesterday = new Date(today);
-        yesterday.setDate(today.getDate() - 1);
-        const yesterdayFormatted = `${String(yesterday.getDate()).padStart(2, '0')}/${String(yesterday.getMonth() + 1).padStart(2, '0')}/${yesterday.getFullYear()}`;
         
         // We'll fetch all and filter client-side for dates before yesterday
         // (Since Supabase doesn't support date comparisons directly with DD/MM/YYYY format)
@@ -144,11 +146,6 @@ export default function EnquiryList() {
         let filteredData = data;
         
         if (category === 'due') {
-          // Get yesterday's date for comparison
-          const today = new Date();
-          const yesterday = new Date(today);
-          yesterday.setDate(today.getDate() - 1);
-          
           // Filter for dates before yesterday
           filteredData = data.filter(enquiry => {
             if (!enquiry.NFD) return false;
@@ -158,14 +155,14 @@ export default function EnquiryList() {
             
             // Create Date objects for comparison (month is 0-indexed in JavaScript)
             const nfdDate = new Date(year, month - 1, day);
-            const yesterdayDate = new Date(
-              yesterday.getFullYear(),
-              yesterday.getMonth(),
-              yesterday.getDate()
+            const todayDate = new Date(
+              today.getFullYear(),
+              today.getMonth(),
+              today.getDate()
             );
             
             // Return true if the NFD date is before yesterday
-            return nfdDate < yesterdayDate;
+            return nfdDate < todayDate;
           });
           
           console.log('Due enquiries after filtering (dates before yesterday):', filteredData.length);
