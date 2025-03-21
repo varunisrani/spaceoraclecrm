@@ -343,9 +343,9 @@ export default function Home() {
         console.log('Due enquiries loaded:', dueEnquiries.length);
         
         // Get yesterday's enquiries from Supabase
-        console.log('Fetching yesterday's enquiries...');
+        console.log("Fetching yesterday's enquiries...");
         const yesterdaysEnquiries = await fetchYesterdaysEnquiries();
-        console.log('Yesterday's enquiries loaded:', yesterdaysEnquiries.length);
+        console.log("Yesterday's enquiries loaded:", yesterdaysEnquiries.length);
         
         // Categorize enquiries
         const categorized = {
