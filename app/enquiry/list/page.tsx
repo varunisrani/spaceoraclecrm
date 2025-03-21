@@ -36,11 +36,14 @@ function SearchParamsHandler({ onSearchChange }: { onSearchChange: (search: stri
     const search = searchParams.get('search');
     const category = searchParams.get('category');
     
+    console.log('Search params detected:', { search, category });
+    
     if (search) {
+      console.log('Setting search query from URL param:', search);
       onSearchChange(search);
     } else if (category) {
       // Handle category filtering if needed
-      console.log('Category:', category);
+      console.log('Category detected:', category);
     }
   }, [searchParams, onSearchChange]);
   
@@ -59,23 +62,30 @@ export default function EnquiryList() {
   const fetchEnquiries = async (query: string, source: string, employee: string) => {
     try {
       setIsLoading(true);
+      console.log('Fetching enquiries with params:', { query, source, employee });
+      
       let supabaseQuery = supabase
         .from('enquiries')
         .select('*');
 
+      // Date regex pattern for DD/MM/YYYY format
+      const dateRegex = /^\d{2}\/\d{2}\/\d{4}$/;
+      
       // Apply search filter if query exists
       if (query) {
         // Check if the query contains comma-separated dates
         if (query.includes(',')) {
           const dates = query.split(',');
+          console.log('Filtering by multiple dates:', dates);
           supabaseQuery = supabaseQuery.in('NFD', dates);
         } else {
           // Check if the query is a single date in DD/MM/YYYY format
-          const dateRegex = /^\d{2}\/\d{2}\/\d{4}$/;
           if (dateRegex.test(query)) {
+            console.log('Filtering by exact date:', query);
             supabaseQuery = supabaseQuery.eq('NFD', query);
           } else {
             // Fix: Use proper format for OR conditions in Supabase
+            console.log('Filtering by text search:', query);
             supabaseQuery = supabaseQuery.or(`"Client Name".ilike.%${query}%,"Mobile".ilike.%${query}%`);
           }
         }
@@ -84,18 +94,18 @@ export default function EnquiryList() {
       // Apply source filter
       if (source !== 'ALL') {
         // Match exact source value from dropdown to database column
+        console.log('Filtering by source:', source);
         supabaseQuery = supabaseQuery.eq('Enquiry Source', source);
       }
 
       // Apply employee filter
       if (employee !== 'ALL') {
+        console.log('Filtering by employee:', employee);
         supabaseQuery = supabaseQuery.eq('Assigned To', employee);
       }
 
       // Order by created date
       supabaseQuery = supabaseQuery.order('Created Date', { ascending: false });
-
-      console.log('Fetching with source:', source); // Debug log
 
       const { data, error } = await supabaseQuery;
 
@@ -105,7 +115,13 @@ export default function EnquiryList() {
       }
 
       if (data) {
-        console.log('Fetched data:', data); // Debug log
+        console.log('Fetched data count:', data.length);
+        
+        // Check if we're filtering by today's date, and show some NFD values
+        if (dateRegex.test(query)) {
+          console.log('NFD values in results:', data.map(item => item.NFD));
+        }
+        
         setEnquiries(data);
         setFilteredEnquiries(data);
       }

@@ -125,15 +125,40 @@ export default function Home() {
       const today = new Date();
       const formattedDate = `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}/${today.getFullYear()}`;
       
-      const { data, error } = await supabase
+      console.log('Fetching today\'s data with date:', formattedDate);
+      
+      // PART 1: Fetch from enquiries table where NFD = today
+      console.log('Fetching from enquiries table where NFD =', formattedDate);
+      const { data: nfdData, error: nfdError } = await supabase
         .from('enquiries')
         .select('*')
         .eq('NFD', formattedDate);
 
-      if (error) throw error;
+      if (nfdError) throw nfdError;
 
-      // Transform the data to match the Enquiry type
-      const transformedData: Enquiry[] = data.map(enquiry => ({
+      console.log('Enquiries with NFD = today:', nfdData?.length || 0);
+      
+      // PART 2: Fetch from Inquiry_Progress table where date = today
+      console.log('Fetching from Inquiry_Progress table where date =', formattedDate);
+      const { data: progressData, error: progressError } = await supabase
+        .from('Inquiry_Progress')
+        .select('*, enquiries:eid(*)')
+        .eq('date', formattedDate);
+
+      if (progressError) throw progressError;
+
+      console.log('Inquiry_Progress entries with date = today:', progressData?.length || 0);
+      
+      // Filter out completed or cancelled inquiries from NFD data
+      const filteredNfdData = nfdData.filter(enquiry => {
+        const status = (enquiry["Enquiry Progress"] || '').toLowerCase();
+        return !status.includes('done') && !status.includes('cancelled');
+      });
+      
+      console.log('NFD enquiries after status filtering:', filteredNfdData.length);
+      
+      // Transform the NFD data to match the Enquiry type
+      const nfdTransformedData: Enquiry[] = filteredNfdData.map(enquiry => ({
         id: enquiry.id,
         clientName: enquiry["Client Name"] || 'Unknown Client',
         mobile: enquiry.Mobile || '',
@@ -146,8 +171,44 @@ export default function Home() {
         dateCreated: enquiry["Created Date"] || new Date().toISOString(),
         category: 'today'
       }));
-
-      return transformedData;
+      
+      // Transform the Progress data to match the Enquiry type (only if it has a related enquiry)
+      const progressTransformedData: Enquiry[] = progressData
+        .filter(progress => progress.enquiries) // Only include progress entries with valid enquiry relation
+        .map(progress => {
+          const enquiry = progress.enquiries;
+          return {
+            id: enquiry.id,
+            clientName: enquiry["Client Name"] || 'Unknown Client',
+            mobile: enquiry.Mobile || '',
+            configuration: enquiry.Configuration || '',
+            description: progress.remark || enquiry["Last Remarks"] || '',
+            status: enquiry["Enquiry Progress"]?.toLowerCase().includes('done') ? 'inactive' :
+                    enquiry["Enquiry Progress"]?.toLowerCase().includes('cancelled') ? 'inactive' : 'active',
+            source: (enquiry["Enquiry Source"] || 'REF') as InquirySource,
+            assignedEmployee: enquiry["Assigned To"] || '',
+            dateCreated: enquiry["Created Date"] || new Date().toISOString(),
+            category: 'today',
+            progressType: progress.progress_type,
+            progressId: progress.id
+          };
+        });
+      
+      console.log('Transformed progress data entries:', progressTransformedData.length);
+      
+      // Combine both data sources, avoiding duplicates (by id)
+      const allEnquiries = [...nfdTransformedData];
+      
+      // Add progress entries, but avoid duplicates
+      for (const progressEnquiry of progressTransformedData) {
+        if (!allEnquiries.some(e => e.id === progressEnquiry.id)) {
+          allEnquiries.push(progressEnquiry);
+        }
+      }
+      
+      console.log('Total combined today\'s enquiries:', allEnquiries.length);
+      
+      return allEnquiries;
     } catch (error) {
       console.error('Error fetching today\'s enquiries:', error);
       return [];
@@ -251,18 +312,26 @@ export default function Home() {
     const loadData = async () => {
       try {
         setIsLoading(true);
+        console.log('Starting to load dashboard data...');
         
         // Get enquiries from localStorage
         const localStorageEnquiries = getEnquiries();
+        console.log('Local storage enquiries:', localStorageEnquiries.length);
         
         // Get today's enquiries from Supabase
+        console.log('Fetching today\'s enquiries...');
         const todaysEnquiries = await fetchTodaysEnquiries();
+        console.log('Today\'s enquiries loaded:', todaysEnquiries.length);
         
         // Get due enquiries from Supabase (1-2 days before today)
+        console.log('Fetching due enquiries...');
         const dueEnquiries = await fetchDueEnquiries();
+        console.log('Due enquiries loaded:', dueEnquiries.length);
         
         // Get yesterday's enquiries from Supabase
+        console.log('Fetching yesterday\'s enquiries...');
         const yesterdaysEnquiries = await fetchYesterdaysEnquiries();
+        console.log('Yesterday\'s enquiries loaded:', yesterdaysEnquiries.length);
         
         // Categorize enquiries
         const categorized = {
@@ -272,6 +341,14 @@ export default function Home() {
           due: dueEnquiries, // Use Supabase data for due enquiries
           weekend: localStorageEnquiries.filter(e => e.category === 'weekend')
         };
+        
+        console.log('Categorized enquiries:', {
+          new: categorized.new.length,
+          today: categorized.today.length,
+          yesterday: categorized.yesterday.length,
+          due: categorized.due.length,
+          weekend: categorized.weekend.length
+        });
         
         setCategorizedEnquiries(categorized);
 
@@ -304,7 +381,10 @@ export default function Home() {
         ]);
 
         // Simulate loading for UI polish
-        setTimeout(() => setIsLoading(false), 500);
+        setTimeout(() => {
+          setIsLoading(false);
+          console.log('Dashboard data loading complete');
+        }, 500);
       } catch (error) {
         console.error('Error loading data:', error);
         setIsLoading(false);
@@ -379,7 +459,7 @@ export default function Home() {
               title="New Enquiries" 
               value={stats.newEnquiries}
               icon={<NewIcon />}
-              href="/enquiry/list"
+              href="/new-inquiries"
               color="blue"
             />
             <StatCard 
@@ -564,6 +644,9 @@ const StatCard = ({ title, value, icon, href, color = 'default' }: {
     if (title === "Today's Site Visits") {
       return '/todays-site-visits';
     }
+    if (title === "New Enquiries") {
+      return '/new-inquiries';
+    }
     return href || '#';
   };
 
@@ -591,6 +674,10 @@ const CategoryCard = ({ title, count, icon, enquiries, colorClass }: {
   enquiries: Enquiry[];
   colorClass: string;
 }) => {
+  // Add debug logging for this component
+  console.log(`Rendering CategoryCard for "${title}" with ${count} enquiries:`, 
+    enquiries.map(e => ({ id: e.id, clientName: e.clientName, progressType: (e as any).progressType })));
+  
   // Convert title to category value for filtering
   const getCategoryValue = (title: string) => {
     return title.toLowerCase();
@@ -619,15 +706,19 @@ const CategoryCard = ({ title, count, icon, enquiries, colorClass }: {
   };
 
   // Get the search parameter based on category
-  const getSearchParam = (title: string) => {
+  const getLink = (title: string) => {
     if (title === 'Today') {
-      return `?search=${getTodayDate()}`;
+      // Link to the dedicated today-inquiries page for Today category
+      return '/today-inquiries';
+    } else if (title === 'New') {
+      // Link to the dedicated new-inquiries page for New category
+      return '/new-inquiries';
     } else if (title === 'Due') {
-      return `?search=${getYesterdayDate()},${getTwoDaysAgoDate()}`;
+      return `/enquiry/list?search=${getYesterdayDate()},${getTwoDaysAgoDate()}`;
     } else if (title === 'Yesterday') {
-      return `?search=${getYesterdayDate()}`;
+      return `/enquiry/list?search=${getYesterdayDate()}`;
     }
-    return `?category=${getCategoryValue(title)}`;
+    return `/enquiry/list?category=${getCategoryValue(title)}`;
   };
 
   const getStatusColor = (status: string) => {
@@ -644,13 +735,33 @@ const CategoryCard = ({ title, count, icon, enquiries, colorClass }: {
         return 'bg-gray-100 text-gray-800';
     }
   };
+  
+  // Get progress type display and color
+  const getProgressTypeDisplay = (progressType: string) => {
+    if (!progressType) return null;
+    
+    let label = progressType.replace(/_/g, ' ');
+    label = label.charAt(0).toUpperCase() + label.slice(1);
+    
+    let colorClass = 'bg-purple-100 text-purple-800';
+    
+    if (progressType.includes('site_visit')) {
+      colorClass = 'bg-green-100 text-green-800';
+    } else if (progressType.includes('phone')) {
+      colorClass = 'bg-blue-100 text-blue-800';
+    } else if (progressType.includes('deal')) {
+      colorClass = 'bg-amber-100 text-amber-800';
+    }
+    
+    return { label, colorClass };
+  };
 
   // Check if we should show only count for this category
   const showOnlyCount = title === 'Today' || title === 'Due' || title === 'Yesterday';
 
   return (
     <Link 
-      href={`/enquiry/list${getSearchParam(title)}`}
+      href={getLink(title)}
       className={`premium-card overflow-hidden border transition-all hover:shadow-md ${colorClass}`}
     >
       <div className="p-5">
@@ -677,11 +788,26 @@ const CategoryCard = ({ title, count, icon, enquiries, colorClass }: {
               <div key={enquiry.id} className="p-2 rounded-lg bg-white/70 dark:bg-gray-800/70">
                 <div className="font-medium text-gray-800 dark:text-white truncate">{enquiry.clientName}</div>
                 <div className="flex justify-between items-center mt-1">
-                  <div className="text-xs text-gray-500 dark:text-gray-400">{enquiry.configuration}</div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">
+                    {enquiry.configuration || 'No Config'}
+                  </div>
                   <div className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(enquiry.status)}`}>
                     {enquiry.status}
                   </div>
                 </div>
+                {/* Show progress type if available */}
+                {(enquiry as any).progressType && (
+                  <div className="mt-1">
+                    {(() => {
+                      const progressInfo = getProgressTypeDisplay((enquiry as any).progressType);
+                      return progressInfo ? (
+                        <div className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${progressInfo.colorClass}`}>
+                          {progressInfo.label}
+                        </div>
+                      ) : null;
+                    })()}
+                  </div>
+                )}
               </div>
             ))}
             
