@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '../utils/supabase';
+import SearchBar from '../components/SearchBar';
 
 interface Inquiry {
   id: string | number;
@@ -48,11 +49,35 @@ interface ProgressRecord {
 
 export default function TodayInquiries() {
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
+  const [filteredInquiries, setFilteredInquiries] = useState<Inquiry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState<string>('');
 
   useEffect(() => {
     fetchTodaysInquiries();
   }, []);
+
+  // Effect to filter inquiries based on search query
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setFilteredInquiries(inquiries);
+      return;
+    }
+
+    const lowerCaseQuery = searchQuery.toLowerCase();
+    const filtered = inquiries.filter(inquiry => 
+      inquiry.clientName.toLowerCase().includes(lowerCaseQuery) ||
+      inquiry.mobile.toLowerCase().includes(lowerCaseQuery) ||
+      inquiry.configuration.toLowerCase().includes(lowerCaseQuery) ||
+      inquiry.source.toLowerCase().includes(lowerCaseQuery) ||
+      inquiry.assignedEmployee.toLowerCase().includes(lowerCaseQuery) ||
+      (inquiry.description && inquiry.description.toLowerCase().includes(lowerCaseQuery)) ||
+      (inquiry.progressType && inquiry.progressType.toLowerCase().includes(lowerCaseQuery)) ||
+      (inquiry.progressRemark && inquiry.progressRemark.toLowerCase().includes(lowerCaseQuery))
+    );
+    
+    setFilteredInquiries(filtered);
+  }, [searchQuery, inquiries]);
 
   const fetchTodaysInquiries = async () => {
     try {
@@ -188,11 +213,16 @@ export default function TodayInquiries() {
       
       console.log('Total combined today\'s inquiries:', combinedInquiries.length);
       setInquiries(combinedInquiries);
+      setFilteredInquiries(combinedInquiries);
     } catch (error) {
       console.error('Error fetching today\'s inquiries:', error);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
   };
 
   const getProgressTypeLabel = (type: string = ''): string => {
@@ -262,6 +292,15 @@ export default function TodayInquiries() {
               Back to Dashboard
             </Link>
           </div>
+          
+          {/* Search Bar */}
+          <div className="mt-4">
+            <SearchBar 
+              onSearch={handleSearch} 
+              placeholder="Search by client name, phone number, or configuration..." 
+              defaultValue={searchQuery}
+            />
+          </div>
         </div>
       </div>
 
@@ -275,7 +314,7 @@ export default function TodayInquiries() {
             </h2>
             <div className="flex items-center gap-2">
               <span className="text-sm text-gray-600 dark:text-gray-400">
-                Showing {inquiries.length} inquiries
+                Showing {filteredInquiries.length} of {inquiries.length} inquiries
               </span>
             </div>
           </div>
@@ -294,20 +333,37 @@ export default function TodayInquiries() {
                   <th>Configuration</th>
                   <th>Source</th>
                   <th>Assigned To</th>
-                  <th>Status</th>
-                  <th>Progress Type</th>
-                  <th>Remarks</th>
-                  <th className="text-right">Actions</th>
+                  <th>Progress</th>
+                  <th>Next Follow-up</th>
+                  <th>Last Remarks</th>
+                  <th>Created Date</th>
                 </tr>
               </thead>
               <tbody>
-                {inquiries.length > 0 ? (
-                  inquiries.map(inquiry => (
+                {filteredInquiries.length > 0 ? (
+                  filteredInquiries.map(inquiry => (
                     <tr key={`${inquiry.id}-${inquiry.sourceType}`}>
                       <td>
                         <div className="flex items-center gap-3">
-                          <div className="flex h-10 w-10 rounded-full bg-[#1a2e29]/10 dark:bg-[#c69c6d]/10 dark:border-[#c69c6d]/20 items-center justify-center text-[#1a2e29] dark:text-[#c69c6d]">
-                            {inquiry.clientName.charAt(0).toUpperCase()}
+                          <div className="flex items-center gap-1">
+                            <Link
+                              href={`/enquiry/${inquiry.id}/edit`}
+                              className="p-1.5 text-gray-600 hover:text-[#c69c6d] transition-colors rounded-lg hover:bg-gray-100"
+                              title="Edit Inquiry"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                              </svg>
+                            </Link>
+                            <Link
+                              href={`/enquiry/${inquiry.id}/progress`}
+                              className="p-1.5 text-gray-600 hover:text-[#c69c6d] transition-colors rounded-lg hover:bg-gray-100"
+                              title="Add Progress"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clipRule="evenodd" />
+                              </svg>
+                            </Link>
                           </div>
                           <div>
                             <div className="font-medium">{inquiry.clientName}</div>
@@ -315,13 +371,17 @@ export default function TodayInquiries() {
                           </div>
                         </div>
                       </td>
-                      <td>{inquiry.configuration || 'N/A'}</td>
                       <td>
-                        <div className="flex flex-col gap-1">
-                          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-[#1a2e29]/10 dark:bg-[#c69c6d]/10 text-[#1a2e29] dark:text-[#c69c6d]">
-                            {inquiry.source}
-                          </div>
-                          {getSourceBadge(inquiry.sourceType)}
+                        <div className="font-medium">{inquiry.configuration || 'N/A'}</div>
+                      </td>
+                      <td>
+                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-[#1a2e29]/10 dark:bg-[#c69c6d]/10 text-[#1a2e29] dark:text-[#c69c6d]">
+                          {inquiry.source}
+                          {inquiry.sourceType && (
+                            <span className="ml-1 text-[10px] bg-gray-200 dark:bg-gray-700 px-1 rounded">
+                              {inquiry.sourceType}
+                            </span>
+                          )}
                         </div>
                       </td>
                       <td>
@@ -330,57 +390,27 @@ export default function TodayInquiries() {
                         </div>
                       </td>
                       <td>
-                        <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(inquiry.status)}`}>
+                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-[#1a2e29]/10 dark:bg-[#c69c6d]/10 text-[#1a2e29] dark:text-[#c69c6d]">
                           {inquiry.status}
+                          {inquiry.progressType && (
+                            <span className="ml-1 text-[10px] bg-gray-200 dark:bg-gray-700 px-1 rounded">
+                              {inquiry.progressType.replace(/_/g, ' ')}
+                            </span>
+                          )}
                         </div>
                       </td>
                       <td>
-                        {inquiry.progressType ? (
-                          <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${getProgressTypeColor(inquiry.progressType)}`}>
-                            {getProgressTypeLabel(inquiry.progressType)}
-                          </div>
-                        ) : (
-                          'N/A'
-                        )}
+                        {inquiry.progressDate || '-'}
                       </td>
                       <td>
                         <div className="max-w-[200px]">
                           <div className="text-sm text-gray-600 dark:text-gray-400 truncate">
-                            {inquiry.description || 'No remarks'}
+                            {inquiry.progressRemark || inquiry.description || 'No remarks yet'}
                           </div>
                         </div>
                       </td>
-                      <td className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Link
-                            href={`/enquiry/${inquiry.id}`}
-                            className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors text-gray-600 dark:text-gray-400"
-                            title="View details"
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                            </svg>
-                          </Link>
-                          <Link
-                            href={`/enquiry/${inquiry.id}/edit`}
-                            className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors text-gray-600 dark:text-gray-400"
-                            title="Edit inquiry"
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                            </svg>
-                          </Link>
-                          <Link
-                            href={`/enquiry/${inquiry.id}/progress`}
-                            className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors text-gray-600 dark:text-gray-400"
-                            title="Add progress"
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                          </Link>
-                        </div>
+                      <td>
+                        {inquiry.dateCreated || '-'}
                       </td>
                     </tr>
                   ))

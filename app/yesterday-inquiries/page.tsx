@@ -9,15 +9,12 @@ interface Inquiry {
   id: string | number;
   clientName: string;
   mobile: string;
-  email?: string;
   configuration: string;
   description: string;
   status: string;
   source: string;
   assignedEmployee: string;
   dateCreated: string;
-  budget?: string;
-  area?: string;
   lastRemarks?: string;
   nfd?: string;
 }
@@ -27,30 +24,24 @@ interface EnquiryRecord {
   id: string | number;
   "Client Name"?: string;
   Mobile?: string;
-  Email?: string;
-  "Enquiry For"?: string;
-  "Property Type"?: string;
-  "Assigned To"?: string;
-  "Created Date"?: string;
-  "Enquiry Progress"?: string;
-  Budget?: string;
-  NFD?: string;
-  "Enquiry Source"?: string;
-  Area?: string;
   Configuration?: string;
   "Last Remarks"?: string;
-  Remarks?: string;
-  [key: string]: string | number | undefined;  // Replace any with more specific types
+  "Enquiry Progress"?: string;
+  "Enquiry Source"?: string;
+  "Assigned To"?: string;
+  "Created Date"?: string;
+  NFD?: string;
+  [key: string]: string | number | boolean | null | undefined;  // For other potential fields
 }
 
-export default function NewInquiries() {
+export default function YesterdayInquiries() {
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [filteredInquiries, setFilteredInquiries] = useState<Inquiry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState<string>('');
 
   useEffect(() => {
-    fetchNewInquiries();
+    fetchYesterdaysInquiries();
   }, []);
 
   // Effect to filter inquiries based on search query
@@ -65,57 +56,65 @@ export default function NewInquiries() {
       inquiry.clientName.toLowerCase().includes(lowerCaseQuery) ||
       inquiry.mobile.toLowerCase().includes(lowerCaseQuery) ||
       inquiry.configuration.toLowerCase().includes(lowerCaseQuery) ||
-      (inquiry.email && inquiry.email.toLowerCase().includes(lowerCaseQuery)) ||
       inquiry.source.toLowerCase().includes(lowerCaseQuery) ||
       inquiry.assignedEmployee.toLowerCase().includes(lowerCaseQuery) ||
-      (inquiry.description && inquiry.description.toLowerCase().includes(lowerCaseQuery))
+      (inquiry.description && inquiry.description.toLowerCase().includes(lowerCaseQuery)) ||
+      (inquiry.lastRemarks && inquiry.lastRemarks.toLowerCase().includes(lowerCaseQuery))
     );
     
     setFilteredInquiries(filtered);
   }, [searchQuery, inquiries]);
 
-  const fetchNewInquiries = async () => {
+  const fetchYesterdaysInquiries = async () => {
     try {
       setIsLoading(true);
       
-      console.log('Fetching new inquiries...');
+      // Get yesterday's date in DD/MM/YYYY format
+      const today = new Date();
+      const yesterday = new Date(today);
+      yesterday.setDate(today.getDate() - 1);
+      const yesterdayFormatted = `${String(yesterday.getDate()).padStart(2, '0')}/${String(yesterday.getMonth() + 1).padStart(2, '0')}/${yesterday.getFullYear()}`;
       
-      // Fetch from enquiries table where Enquiry Progress = 'New'
+      console.log('Fetching yesterday\'s inquiries for date:', yesterdayFormatted);
+      
+      // Fetch inquiries where NFD is yesterday
       const { data, error } = await supabase
         .from('enquiries')
         .select('*')
-        .eq('Enquiry Progress', 'New');
+        .eq('NFD', yesterdayFormatted);
 
       if (error) throw error;
-
-      console.log('New inquiries fetched:', data?.length || 0);
       
-      // Ensure data is treated as EnquiryRecord[]
-      const typedData = data as EnquiryRecord[];
+      console.log('Yesterday\'s inquiries fetched:', data?.length || 0);
+      
+      // Filter out completed or cancelled inquiries
+      const filteredData = data.filter(enquiry => {
+        const status = (enquiry["Enquiry Progress"] || '').toLowerCase();
+        return !status.includes('done') && !status.includes('cancelled');
+      });
+      
+      console.log('Yesterday\'s inquiries after filtering:', filteredData.length);
       
       // Transform the data to match our Inquiry type
-      const transformedData: Inquiry[] = typedData.map(enquiry => ({
+      const transformedData: Inquiry[] = filteredData.map(enquiry => ({
         id: enquiry.id,
         clientName: enquiry["Client Name"] || 'Unknown Client',
         mobile: enquiry.Mobile || '',
-        email: enquiry.Email || '',
         configuration: enquiry.Configuration || '',
-        description: enquiry.Remarks || enquiry["Last Remarks"] || '',
-        status: enquiry["Enquiry Progress"] || 'New',
+        description: enquiry.Remarks || '',
+        status: enquiry["Enquiry Progress"] || '',
         source: enquiry["Enquiry Source"] || 'Unknown',
         assignedEmployee: enquiry["Assigned To"] || '',
-        dateCreated: String(enquiry["Created Date"] || enquiry.created_at || new Date().toISOString()),
-        budget: enquiry.Budget || '',
-        area: enquiry.Area || '',
+        dateCreated: String(enquiry["Created Date"] || enquiry.created_at || ''),
         lastRemarks: enquiry["Last Remarks"] || '',
         nfd: enquiry.NFD || ''
       }));
       
-      console.log('Transformed new inquiries:', transformedData.length);
+      console.log('Transformed yesterday\'s inquiries:', transformedData.length);
       setInquiries(transformedData);
       setFilteredInquiries(transformedData);
     } catch (error) {
-      console.error('Error fetching new inquiries:', error);
+      console.error('Error fetching yesterday\'s inquiries:', error);
     } finally {
       setIsLoading(false);
     }
@@ -123,40 +122,6 @@ export default function NewInquiries() {
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
-  };
-
-  const getSourceBadge = (source: string) => {
-    let colorClass = 'bg-blue-100 text-blue-800';
-    
-    if (source.includes('FACEBOOK') || source.includes('Facebook')) {
-      colorClass = 'bg-indigo-100 text-indigo-800';
-    } else if (source.includes('REF') || source.includes('Reference')) {
-      colorClass = 'bg-green-100 text-green-800';
-    } else if (source.includes('PORTAL')) {
-      colorClass = 'bg-purple-100 text-purple-800';
-    }
-    
-    return (
-      <span className={`px-2 py-1 rounded-full text-xs font-medium ${colorClass}`}>
-        {source}
-      </span>
-    );
-  };
-
-  // Defined but unused - kept for future use
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const getStatusColor = (status: string): string => {
-    const lowerStatus = status.toLowerCase();
-    if (lowerStatus.includes('new')) {
-      return 'bg-blue-100 text-blue-800';
-    } else if (lowerStatus.includes('progress')) {
-      return 'bg-yellow-100 text-yellow-800';
-    } else if (lowerStatus.includes('done') || lowerStatus.includes('completed')) {
-      return 'bg-green-100 text-green-800';
-    } else if (lowerStatus.includes('cancel')) {
-      return 'bg-red-100 text-red-800';
-    }
-    return 'bg-gray-100 text-gray-800';
   };
 
   return (
@@ -169,9 +134,9 @@ export default function NewInquiries() {
         <div className="relative py-12 px-8 text-white">
           <div className="flex flex-col md:flex-row md:items-center justify-between mb-6">
             <div>
-              <h1 className="text-3xl font-bold mb-2">New Inquiries</h1>
+              <h1 className="text-3xl font-bold mb-2">Yesterday&apos;s Inquiries</h1>
               <p className="text-[#e5d0b1] max-w-2xl">
-                All recently added inquiries with &apos;New&apos; status
+                All inquiries that were scheduled for yesterday (previous day)
               </p>
             </div>
             <Link 
@@ -202,7 +167,7 @@ export default function NewInquiries() {
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-bold flex items-center">
               <span className="inline-block w-1.5 h-5 bg-[#c69c6d] rounded-full mr-2"></span>
-              New Inquiry List
+              Yesterday&apos;s Inquiry List
             </h2>
             <div className="flex items-center gap-2">
               <span className="text-sm text-gray-600 dark:text-gray-400">
@@ -287,7 +252,7 @@ export default function NewInquiries() {
                       <td>
                         <div className="max-w-[200px]">
                           <div className="text-sm text-gray-600 dark:text-gray-400 truncate">
-                            {inquiry.lastRemarks || 'No remarks yet'}
+                            {inquiry.lastRemarks || inquiry.description || 'No remarks yet'}
                           </div>
                         </div>
                       </td>
@@ -303,8 +268,8 @@ export default function NewInquiries() {
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
                         </svg>
-                        <h3 className="text-lg font-medium mb-1">No new inquiries found</h3>
-                        <p className="text-gray-500 dark:text-gray-400 mb-4">There are no inquiries with &apos;New&apos; status</p>
+                        <h3 className="text-lg font-medium mb-1">No inquiries found for yesterday</h3>
+                        <p className="text-gray-500 dark:text-gray-400 mb-4">There were no inquiries scheduled for yesterday</p>
                       </div>
                     </td>
                   </tr>

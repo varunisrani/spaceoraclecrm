@@ -29,7 +29,10 @@ interface Enquiry {
 }
 
 // Separate component that uses searchParams
-function SearchParamsHandler({ onSearchChange }: { onSearchChange: (search: string) => void }) {
+function SearchParamsHandler({ onSearchChange, onCategoryChange }: { 
+  onSearchChange: (search: string) => void,
+  onCategoryChange: (category: string) => void 
+}) {
   const searchParams = useSearchParams();
   
   useEffect(() => {
@@ -42,10 +45,11 @@ function SearchParamsHandler({ onSearchChange }: { onSearchChange: (search: stri
       console.log('Setting search query from URL param:', search);
       onSearchChange(search);
     } else if (category) {
-      // Handle category filtering if needed
+      // Handle category filtering
       console.log('Category detected:', category);
+      onCategoryChange(category);
     }
-  }, [searchParams, onSearchChange]);
+  }, [searchParams, onSearchChange, onCategoryChange]);
   
   return null; // This component doesn't render anything
 }
@@ -57,12 +61,13 @@ export default function EnquiryList() {
   const [filterSource, setFilterSource] = useState<string>('ALL');
   const [filterEmployee, setFilterEmployee] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [currentCategory, setCurrentCategory] = useState<string>('');
 
   // Function to fetch enquiries
-  const fetchEnquiries = async (query: string, source: string, employee: string) => {
+  const fetchEnquiries = async (query: string, source: string, employee: string, category?: string) => {
     try {
       setIsLoading(true);
-      console.log('Fetching enquiries with params:', { query, source, employee });
+      console.log('Fetching enquiries with params:', { query, source, employee, category });
       
       let supabaseQuery = supabase
         .from('enquiries')
@@ -71,8 +76,21 @@ export default function EnquiryList() {
       // Date regex pattern for DD/MM/YYYY format
       const dateRegex = /^\d{2}\/\d{2}\/\d{4}$/;
       
+      // Apply category filter for 'due' - dates earlier than yesterday
+      if (category === 'due') {
+        console.log('Filtering for due category (dates earlier than yesterday)');
+        
+        // Get yesterday's date in DD/MM/YYYY format
+        const today = new Date();
+        const yesterday = new Date(today);
+        yesterday.setDate(today.getDate() - 1);
+        const yesterdayFormatted = `${String(yesterday.getDate()).padStart(2, '0')}/${String(yesterday.getMonth() + 1).padStart(2, '0')}/${yesterday.getFullYear()}`;
+        
+        // We'll fetch all and filter client-side for dates before yesterday
+        // (Since Supabase doesn't support date comparisons directly with DD/MM/YYYY format)
+      }
       // Apply search filter if query exists
-      if (query) {
+      else if (query) {
         // Check if the query contains comma-separated dates
         if (query.includes(',')) {
           const dates = query.split(',');
@@ -122,8 +140,39 @@ export default function EnquiryList() {
           console.log('NFD values in results:', data.map(item => item.NFD));
         }
         
+        // Additional client-side filtering for 'due' category
+        let filteredData = data;
+        
+        if (category === 'due') {
+          // Get yesterday's date for comparison
+          const today = new Date();
+          const yesterday = new Date(today);
+          yesterday.setDate(today.getDate() - 1);
+          
+          // Filter for dates before yesterday
+          filteredData = data.filter(enquiry => {
+            if (!enquiry.NFD) return false;
+            
+            // Parse the NFD date (DD/MM/YYYY)
+            const [day, month, year] = enquiry.NFD.split('/').map(Number);
+            
+            // Create Date objects for comparison (month is 0-indexed in JavaScript)
+            const nfdDate = new Date(year, month - 1, day);
+            const yesterdayDate = new Date(
+              yesterday.getFullYear(),
+              yesterday.getMonth(),
+              yesterday.getDate()
+            );
+            
+            // Return true if the NFD date is before yesterday
+            return nfdDate < yesterdayDate;
+          });
+          
+          console.log('Due enquiries after filtering (dates before yesterday):', filteredData.length);
+        }
+        
         setEnquiries(data);
-        setFilteredEnquiries(data);
+        setFilteredEnquiries(filteredData);
       }
     } catch (error) {
       console.error('Error fetching enquiries:', error);
@@ -135,23 +184,29 @@ export default function EnquiryList() {
   // Effect to handle debounced search
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-      fetchEnquiries(searchQuery, filterSource, filterEmployee);
+      fetchEnquiries(searchQuery, filterSource, filterEmployee, currentCategory);
     }, 300);
 
     return () => {
       clearTimeout(timeoutId);
     };
-  }, [searchQuery, filterSource, filterEmployee]);
+  }, [searchQuery, filterSource, filterEmployee, currentCategory]);
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
+    setCurrentCategory(''); // Clear category when searching explicitly
+  };
+
+  const handleCategoryChange = (category: string) => {
+    setCurrentCategory(category);
+    setSearchQuery(''); // Clear search query when filtering by category
   };
 
   return (
     <div className="fade-in">
       {/* SearchParams Handling (wrapped in Suspense) */}
       <Suspense fallback={null}>
-        <SearchParamsHandler onSearchChange={setSearchQuery} />
+        <SearchParamsHandler onSearchChange={setSearchQuery} onCategoryChange={handleCategoryChange} />
       </Suspense>
       
       {/* Hero Section */}
@@ -162,10 +217,21 @@ export default function EnquiryList() {
         <div className="relative py-12 px-8 text-white">
           <div className="flex flex-col md:flex-row md:items-center justify-between mb-6">
             <div>
-              <h1 className="text-3xl font-bold mb-2">All Enquiries</h1>
-              <p className="text-[#e5d0b1] max-w-2xl">
-                Track, manage, and optimize your client enquiries
-              </p>
+              {currentCategory === 'due' ? (
+                <>
+                  <h1 className="text-3xl font-bold mb-2">Due Inquiries</h1>
+                  <p className="text-[#e5d0b1] max-w-2xl">
+                    All inquiries with follow-up dates before yesterday
+                  </p>
+                </>
+              ) : (
+                <>
+                  <h1 className="text-3xl font-bold mb-2">All Enquiries</h1>
+                  <p className="text-[#e5d0b1] max-w-2xl">
+                    Track, manage, and optimize your client enquiries
+                  </p>
+                </>
+              )}
             </div>
           </div>
           

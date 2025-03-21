@@ -215,7 +215,7 @@ export default function Home() {
     }
   };
 
-  // Function to fetch due enquiries from Supabase (NFD 1-2 days before today)
+  // Function to fetch due enquiries from Supabase (NFD older than yesterday)
   const fetchDueEnquiries = async () => {
     try {
       // Get current date
@@ -226,21 +226,35 @@ export default function Home() {
       yesterday.setDate(today.getDate() - 1);
       const yesterdayFormatted = `${String(yesterday.getDate()).padStart(2, '0')}/${String(yesterday.getMonth() + 1).padStart(2, '0')}/${yesterday.getFullYear()}`;
       
-      // Get date 2 days before
-      const twoDaysAgo = new Date(today);
-      twoDaysAgo.setDate(today.getDate() - 2);
-      const twoDaysAgoFormatted = `${String(twoDaysAgo.getDate()).padStart(2, '0')}/${String(twoDaysAgo.getMonth() + 1).padStart(2, '0')}/${twoDaysAgo.getFullYear()}`;
+      // Parse yesterday's date for comparison
+      const [yesterdayDay, yesterdayMonth, yesterdayYear] = yesterdayFormatted.split('/').map(Number);
       
-      // Fetch enquiries where NFD is 1-2 days before today
+      // Fetch all enquiries
       const { data, error } = await supabase
         .from('enquiries')
-        .select('*')
-        .in('NFD', [yesterdayFormatted, twoDaysAgoFormatted]);
+        .select('*');
 
       if (error) throw error;
       
+      // Filter enquiries where NFD is earlier than yesterday
+      const filteredData = data.filter(enquiry => {
+        if (!enquiry.NFD) return false;
+        
+        // Parse the NFD date
+        const [day, month, year] = enquiry.NFD.split('/').map(Number);
+        
+        // Create Date objects for comparison
+        const nfdDate = new Date(year, month - 1, day); // month is 0-indexed in JavaScript
+        const yesterdayDate = new Date(yesterdayYear, yesterdayMonth - 1, yesterdayDay);
+        
+        // Return true if the NFD date is before yesterday
+        return nfdDate < yesterdayDate;
+      });
+      
+      console.log('Due enquiries (older than yesterday):', filteredData.length);
+      
       // Transform the data to match the Enquiry type
-      const transformedData: Enquiry[] = data.map(enquiry => ({
+      const transformedData: Enquiry[] = filteredData.map(enquiry => ({
         id: enquiry.id,
         clientName: enquiry["Client Name"] || 'Unknown Client',
         mobile: enquiry.Mobile || '',
@@ -323,7 +337,7 @@ export default function Home() {
         const todaysEnquiries = await fetchTodaysEnquiries();
         console.log('Today\'s enquiries loaded:', todaysEnquiries.length);
         
-        // Get due enquiries from Supabase (1-2 days before today)
+        // Get due enquiries from Supabase (older than yesterday)
         console.log('Fetching due enquiries...');
         const dueEnquiries = await fetchDueEnquiries();
         console.log('Due enquiries loaded:', dueEnquiries.length);
@@ -722,9 +736,11 @@ const CategoryCard = ({ title, count, icon, enquiries, colorClass }: {
       // Link to the dedicated new-inquiries page for New category
       return '/new-inquiries';
     } else if (title === 'Due') {
-      return `/enquiry/list?search=${getYesterdayDate()},${getTwoDaysAgoDate()}`;
+      // Link to the dedicated due-inquiries page for Due category
+      return '/due-inquiries';
     } else if (title === 'Yesterday') {
-      return `/enquiry/list?search=${getYesterdayDate()}`;
+      // Link to the dedicated yesterday-inquiries page for Yesterday category
+      return '/yesterday-inquiries';
     }
     return `/enquiry/list?category=${getCategoryValue(title)}`;
   };

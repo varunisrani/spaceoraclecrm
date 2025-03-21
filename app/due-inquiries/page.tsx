@@ -40,17 +40,17 @@ interface EnquiryRecord {
   Configuration?: string;
   "Last Remarks"?: string;
   Remarks?: string;
-  [key: string]: string | number | undefined;  // Replace any with more specific types
+  [key: string]: string | number | undefined;
 }
 
-export default function NewInquiries() {
+export default function DueInquiries() {
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [filteredInquiries, setFilteredInquiries] = useState<Inquiry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState<string>('');
 
   useEffect(() => {
-    fetchNewInquiries();
+    fetchDueInquiries();
   }, []);
 
   // Effect to filter inquiries based on search query
@@ -65,33 +65,59 @@ export default function NewInquiries() {
       inquiry.clientName.toLowerCase().includes(lowerCaseQuery) ||
       inquiry.mobile.toLowerCase().includes(lowerCaseQuery) ||
       inquiry.configuration.toLowerCase().includes(lowerCaseQuery) ||
-      (inquiry.email && inquiry.email.toLowerCase().includes(lowerCaseQuery)) ||
       inquiry.source.toLowerCase().includes(lowerCaseQuery) ||
       inquiry.assignedEmployee.toLowerCase().includes(lowerCaseQuery) ||
-      (inquiry.description && inquiry.description.toLowerCase().includes(lowerCaseQuery))
+      (inquiry.description && inquiry.description.toLowerCase().includes(lowerCaseQuery)) ||
+      (inquiry.lastRemarks && inquiry.lastRemarks.toLowerCase().includes(lowerCaseQuery)) ||
+      (inquiry.nfd && inquiry.nfd.toLowerCase().includes(lowerCaseQuery))
     );
     
     setFilteredInquiries(filtered);
   }, [searchQuery, inquiries]);
 
-  const fetchNewInquiries = async () => {
+  const fetchDueInquiries = async () => {
     try {
       setIsLoading(true);
       
-      console.log('Fetching new inquiries...');
+      console.log('Fetching due inquiries...');
       
-      // Fetch from enquiries table where Enquiry Progress = 'New'
+      // Get current date
+      const today = new Date();
+      
+      // Get date 1 day before (yesterday)
+      const yesterday = new Date(today);
+      yesterday.setDate(today.getDate() - 1);
+      const yesterdayFormatted = `${String(yesterday.getDate()).padStart(2, '0')}/${String(yesterday.getMonth() + 1).padStart(2, '0')}/${yesterday.getFullYear()}`;
+      
+      // Parse yesterday's date for comparison
+      const [yesterdayDay, yesterdayMonth, yesterdayYear] = yesterdayFormatted.split('/').map(Number);
+      
+      // Fetch all enquiries
       const { data, error } = await supabase
         .from('enquiries')
-        .select('*')
-        .eq('Enquiry Progress', 'New');
+        .select('*');
 
       if (error) throw error;
-
-      console.log('New inquiries fetched:', data?.length || 0);
+      
+      // Filter enquiries where NFD is earlier than yesterday
+      const filteredData = data.filter(enquiry => {
+        if (!enquiry.NFD) return false;
+        
+        // Parse the NFD date
+        const [day, month, year] = enquiry.NFD.split('/').map(Number);
+        
+        // Create Date objects for comparison
+        const nfdDate = new Date(year, month - 1, day); // month is 0-indexed in JavaScript
+        const yesterdayDate = new Date(yesterdayYear, yesterdayMonth - 1, yesterdayDay);
+        
+        // Return true if the NFD date is before yesterday
+        return nfdDate < yesterdayDate;
+      });
+      
+      console.log('Due inquiries (older than yesterday):', filteredData.length);
       
       // Ensure data is treated as EnquiryRecord[]
-      const typedData = data as EnquiryRecord[];
+      const typedData = filteredData as EnquiryRecord[];
       
       // Transform the data to match our Inquiry type
       const transformedData: Inquiry[] = typedData.map(enquiry => ({
@@ -101,7 +127,7 @@ export default function NewInquiries() {
         email: enquiry.Email || '',
         configuration: enquiry.Configuration || '',
         description: enquiry.Remarks || enquiry["Last Remarks"] || '',
-        status: enquiry["Enquiry Progress"] || 'New',
+        status: enquiry["Enquiry Progress"] || 'Due',
         source: enquiry["Enquiry Source"] || 'Unknown',
         assignedEmployee: enquiry["Assigned To"] || '',
         dateCreated: String(enquiry["Created Date"] || enquiry.created_at || new Date().toISOString()),
@@ -111,11 +137,11 @@ export default function NewInquiries() {
         nfd: enquiry.NFD || ''
       }));
       
-      console.log('Transformed new inquiries:', transformedData.length);
+      console.log('Transformed due inquiries:', transformedData.length);
       setInquiries(transformedData);
       setFilteredInquiries(transformedData);
     } catch (error) {
-      console.error('Error fetching new inquiries:', error);
+      console.error('Error fetching due inquiries:', error);
     } finally {
       setIsLoading(false);
     }
@@ -143,22 +169,6 @@ export default function NewInquiries() {
     );
   };
 
-  // Defined but unused - kept for future use
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const getStatusColor = (status: string): string => {
-    const lowerStatus = status.toLowerCase();
-    if (lowerStatus.includes('new')) {
-      return 'bg-blue-100 text-blue-800';
-    } else if (lowerStatus.includes('progress')) {
-      return 'bg-yellow-100 text-yellow-800';
-    } else if (lowerStatus.includes('done') || lowerStatus.includes('completed')) {
-      return 'bg-green-100 text-green-800';
-    } else if (lowerStatus.includes('cancel')) {
-      return 'bg-red-100 text-red-800';
-    }
-    return 'bg-gray-100 text-gray-800';
-  };
-
   return (
     <div className="fade-in">
       {/* Hero Section */}
@@ -169,9 +179,9 @@ export default function NewInquiries() {
         <div className="relative py-12 px-8 text-white">
           <div className="flex flex-col md:flex-row md:items-center justify-between mb-6">
             <div>
-              <h1 className="text-3xl font-bold mb-2">New Inquiries</h1>
+              <h1 className="text-3xl font-bold mb-2">Due Inquiries</h1>
               <p className="text-[#e5d0b1] max-w-2xl">
-                All recently added inquiries with &apos;New&apos; status
+                All inquiries with follow-up dates before yesterday
               </p>
             </div>
             <Link 
@@ -189,24 +199,24 @@ export default function NewInquiries() {
           <div className="mt-4">
             <SearchBar 
               onSearch={handleSearch} 
-              placeholder="Search by client name, phone number, or configuration..." 
+              placeholder="Search by client name, phone number, or follow-up date..." 
               defaultValue={searchQuery}
             />
           </div>
         </div>
       </div>
-
-      {/* Inquiries Table */}
+      
+      {/* Inquiry Data Table */}
       <div className="premium-card overflow-hidden">
         <div className="p-6 pb-0">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-bold flex items-center">
               <span className="inline-block w-1.5 h-5 bg-[#c69c6d] rounded-full mr-2"></span>
-              New Inquiry List
+              Inquiry List
             </h2>
             <div className="flex items-center gap-2">
               <span className="text-sm text-gray-600 dark:text-gray-400">
-                Showing {filteredInquiries.length} of {inquiries.length} inquiries
+                Showing {filteredInquiries.length} of {inquiries.length} due inquiries
               </span>
             </div>
           </div>
@@ -232,79 +242,77 @@ export default function NewInquiries() {
                 </tr>
               </thead>
               <tbody>
-                {filteredInquiries.length > 0 ? (
-                  filteredInquiries.map(inquiry => (
-                    <tr key={inquiry.id}>
-                      <td>
-                        <div className="flex items-center gap-3">
-                          <div className="flex items-center gap-1">
-                            <Link
-                              href={`/enquiry/${inquiry.id}/edit`}
-                              className="p-1.5 text-gray-600 hover:text-[#c69c6d] transition-colors rounded-lg hover:bg-gray-100"
-                              title="Edit Inquiry"
-                            >
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                                <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-                              </svg>
-                            </Link>
-                            <Link
-                              href={`/enquiry/${inquiry.id}/progress`}
-                              className="p-1.5 text-gray-600 hover:text-[#c69c6d] transition-colors rounded-lg hover:bg-gray-100"
-                              title="Add Progress"
-                            >
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clipRule="evenodd" />
-                              </svg>
-                            </Link>
-                          </div>
-                          <div>
-                            <div className="font-medium">{inquiry.clientName}</div>
-                            <div className="text-xs text-gray-500 dark:text-gray-400">{inquiry.mobile}</div>
-                          </div>
+                {filteredInquiries.map(inquiry => (
+                  <tr key={inquiry.id}>
+                    <td>
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-1">
+                          <Link
+                            href={`/enquiry/${inquiry.id}/edit`}
+                            className="p-1.5 text-gray-600 hover:text-[#c69c6d] transition-colors rounded-lg hover:bg-gray-100"
+                            title="Edit Inquiry"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                              <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                            </svg>
+                          </Link>
+                          <Link
+                            href={`/enquiry/${inquiry.id}/progress`}
+                            className="p-1.5 text-gray-600 hover:text-[#c69c6d] transition-colors rounded-lg hover:bg-gray-100"
+                            title="Add Progress"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clipRule="evenodd" />
+                            </svg>
+                          </Link>
                         </div>
-                      </td>
-                      <td>
-                        <div className="font-medium">{inquiry.configuration || 'N/A'}</div>
-                      </td>
-                      <td>
-                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-[#1a2e29]/10 dark:bg-[#c69c6d]/10 text-[#1a2e29] dark:text-[#c69c6d]">
-                          {inquiry.source}
+                        <div>
+                          <div className="font-medium">{inquiry.clientName}</div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400">{inquiry.mobile}</div>
                         </div>
-                      </td>
-                      <td>
-                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-[#1a2e29]/10 dark:bg-[#c69c6d]/10 text-[#1a2e29] dark:text-[#c69c6d]">
-                          {inquiry.assignedEmployee}
+                      </div>
+                    </td>
+                    <td>
+                      <div className="font-medium">{inquiry.configuration === 'Unknown' ? 'N/A' : inquiry.configuration || 'N/A'}</div>
+                    </td>
+                    <td>
+                      {getSourceBadge(inquiry.source)}
+                    </td>
+                    <td>
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-[#1a2e29]/10 dark:bg-[#c69c6d]/10 text-[#1a2e29] dark:text-[#c69c6d]">
+                        {inquiry.assignedEmployee}
+                      </div>
+                    </td>
+                    <td>
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-[#1a2e29]/10 dark:bg-[#c69c6d]/10 text-[#1a2e29] dark:text-[#c69c6d]">
+                        {inquiry.status}
+                      </div>
+                    </td>
+                    <td>
+                      {inquiry.nfd || '-'}
+                    </td>
+                    <td>
+                      <div className="max-w-[200px]">
+                        <div className="text-sm text-gray-600 dark:text-gray-400 truncate">
+                          {inquiry.lastRemarks || 'No remarks yet'}
                         </div>
-                      </td>
-                      <td>
-                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-[#1a2e29]/10 dark:bg-[#c69c6d]/10 text-[#1a2e29] dark:text-[#c69c6d]">
-                          {inquiry.status}
-                        </div>
-                      </td>
-                      <td>
-                        {inquiry.nfd || '-'}
-                      </td>
-                      <td>
-                        <div className="max-w-[200px]">
-                          <div className="text-sm text-gray-600 dark:text-gray-400 truncate">
-                            {inquiry.lastRemarks || 'No remarks yet'}
-                          </div>
-                        </div>
-                      </td>
-                      <td>
-                        {inquiry.dateCreated || '-'}
-                      </td>
-                    </tr>
-                  ))
-                ) : (
+                      </div>
+                    </td>
+                    <td>
+                      {inquiry.dateCreated || '-'}
+                    </td>
+                  </tr>
+                ))}
+                
+                {filteredInquiries.length === 0 && (
                   <tr>
                     <td colSpan={8} className="text-center py-16">
                       <div className="flex flex-col items-center">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
                         </svg>
-                        <h3 className="text-lg font-medium mb-1">No new inquiries found</h3>
-                        <p className="text-gray-500 dark:text-gray-400 mb-4">There are no inquiries with &apos;New&apos; status</p>
+                        <h3 className="text-lg font-medium mb-1">No due inquiries found</h3>
+                        <p className="text-gray-500 dark:text-gray-400 mb-4">All follow-ups are up to date!</p>
                       </div>
                     </td>
                   </tr>
