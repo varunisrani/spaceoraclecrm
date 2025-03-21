@@ -409,8 +409,8 @@ export default function Home() {
   }, []);
 
   const handleSearch = (query: string) => {
-    console.log('Searching for:', query);
-    // In a real app, this would filter data or redirect to a search results page
+    console.log('Dashboard search:', query);
+    // No need to filter data here as we'll redirect to the inquiry list page
   };
 
   // Sample data - commented out as not currently used
@@ -455,6 +455,8 @@ export default function Home() {
             <SearchBar 
               onSearch={handleSearch} 
               placeholder="Search properties, clients, or enquiries..." 
+              submitOnEnter={true}
+              redirectUrl="/enquiry/list"
             />
           </div>
         </div>

@@ -1,22 +1,39 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, FormEvent } from 'react';
+import { useRouter } from 'next/navigation';
 
 interface SearchBarProps {
   onSearch: (query: string) => void;
   placeholder?: string;
   defaultValue?: string;
+  submitOnEnter?: boolean;
+  redirectUrl?: string;
 }
 
-export default function SearchBar({ onSearch, placeholder = 'Search enquiries...', defaultValue = '' }: SearchBarProps) {
+export default function SearchBar({ 
+  onSearch, 
+  placeholder = 'Search enquiries...', 
+  defaultValue = '',
+  submitOnEnter = false,
+  redirectUrl = ''
+}: SearchBarProps) {
+  const router = useRouter();
   const [isFocused, setIsFocused] = useState(false);
   const [value, setValue] = useState(defaultValue);
+  
+  // Update internal state when defaultValue prop changes
+  useEffect(() => {
+    console.log('SearchBar defaultValue changed:', defaultValue);
+    setValue(defaultValue);
+  }, [defaultValue]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
     setValue(newValue);
-    const cleanValue = newValue.trim();
-    onSearch(cleanValue);
+    // Don't trim here - pass the exact value including empty string
+    // This ensures that clearing works properly
+    onSearch(newValue);
   };
 
   const handleQuickFilter = (filterValue: string) => {
@@ -24,9 +41,21 @@ export default function SearchBar({ onSearch, placeholder = 'Search enquiries...
     onSearch(filterValue);
   };
 
+  const handleSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    const cleanValue = value.trim();
+    onSearch(cleanValue);
+    
+    // If submitOnEnter is true and redirectUrl is provided, redirect with the search query
+    if (submitOnEnter && redirectUrl && cleanValue) {
+      console.log('Redirecting to:', `${redirectUrl}?search=${encodeURIComponent(cleanValue)}`);
+      router.push(`${redirectUrl}?search=${encodeURIComponent(cleanValue)}`);
+    }
+  };
+
   return (
     <div className={`w-full mb-6 transition-all duration-300 ${isFocused ? 'scale-[1.01]' : 'scale-[1]'}`}>
-      <div className="relative">
+      <form onSubmit={handleSubmit} className="relative">
         <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
           <svg 
             xmlns="http://www.w3.org/2000/svg" 
@@ -55,7 +84,7 @@ export default function SearchBar({ onSearch, placeholder = 'Search enquiries...
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
         />
-      </div>
+      </form>
       
       {/* Quick Filters - Optional */}
       <div className="flex gap-2 mt-2 px-1">

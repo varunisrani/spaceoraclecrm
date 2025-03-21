@@ -5,6 +5,7 @@ import SearchBar from '../../components/SearchBar';
 import Link from 'next/link';
 import { supabase } from '../../utils/supabase';
 import { useSearchParams } from 'next/navigation';
+import React from 'react';
 
 interface Enquiry {
   id: number;
@@ -30,24 +31,43 @@ interface Enquiry {
 
 // Separate component that uses searchParams
 function SearchParamsHandler({ onSearchChange, onCategoryChange }: { 
-  onSearchChange: (search: string) => void,
+  onSearchChange: (query: string) => void, 
   onCategoryChange: (category: string) => void 
 }) {
   const searchParams = useSearchParams();
+  // Create a ref to track if the parameters have been applied
+  const paramsAppliedRef = React.useRef(false);
   
   useEffect(() => {
-    const search = searchParams.get('search');
+    // If we've already applied parameters, don't override user input
+    if (paramsAppliedRef.current) return;
+    
+    // Check for search parameter
+    const searchQuery = searchParams.get('search');
     const category = searchParams.get('category');
     
-    console.log('Search params detected:', { search, category });
+    console.log('URL params detected - search:', searchQuery, 'category:', category);
     
-    if (search) {
-      console.log('Setting search query from URL param:', search);
-      onSearchChange(search);
-    } else if (category) {
-      // Handle category filtering
-      console.log('Category detected:', category);
+    let hasParams = false;
+    
+    // Update search state if search parameter exists
+    if (searchQuery) {
+      console.log('Setting search query from URL param:', searchQuery);
+      // Ensure this value is passed to the parent component
+      onSearchChange(searchQuery);
+      hasParams = true;
+    }
+    
+    // Update category state if category parameter exists
+    if (category) {
+      console.log('Setting category from URL param:', category);
       onCategoryChange(category);
+      hasParams = true;
+    }
+    
+    // Mark parameters as applied if any were found
+    if (hasParams) {
+      paramsAppliedRef.current = true;
     }
   }, [searchParams, onSearchChange, onCategoryChange]);
   
@@ -72,8 +92,6 @@ export default function EnquiryList() {
       const today = new Date();
       const yesterday = new Date(today);
       yesterday.setDate(today.getDate() - 1);
-      // Comment out or remove this line to fix the ESLint error
-      // const yesterdayFormatted = `${String(yesterday.getDate()).padStart(2, '0')}/${String(yesterday.getMonth() + 1).padStart(2, '0')}/${yesterday.getFullYear()}`;
       
       console.log('Fetching enquiries with query:', query, 'source:', source, 'employee:', employee, 'category:', category);
       
@@ -84,31 +102,26 @@ export default function EnquiryList() {
       // Date regex pattern for DD/MM/YYYY format
       const dateRegex = /^\d{2}\/\d{2}\/\d{4}$/;
       
+      // Apply search query if provided (and is not empty)
+      // Handle empty strings correctly - don't apply filter for empty query
+      if (query && query.trim() !== '') {
+        if (dateRegex.test(query)) {
+          // If query is a date in DD/MM/YYYY format
+          supabaseQuery = supabaseQuery.eq('NFD', query);
+        } else {
+          // Otherwise search in client name, mobile, or last remarks
+          supabaseQuery = supabaseQuery.or(
+            `"Client Name".ilike.%${query}%,"Mobile".ilike.%${query}%,"Last Remarks".ilike.%${query}%`
+          );
+        }
+      }
+      
       // Apply category filter for 'due' - dates earlier than yesterday
       if (category === 'due') {
         console.log('Filtering for due category (dates earlier than yesterday)');
         
         // We'll fetch all and filter client-side for dates before yesterday
         // (Since Supabase doesn't support date comparisons directly with DD/MM/YYYY format)
-      }
-      // Apply search filter if query exists
-      else if (query) {
-        // Check if the query contains comma-separated dates
-        if (query.includes(',')) {
-          const dates = query.split(',');
-          console.log('Filtering by multiple dates:', dates);
-          supabaseQuery = supabaseQuery.in('NFD', dates);
-        } else {
-          // Check if the query is a single date in DD/MM/YYYY format
-          if (dateRegex.test(query)) {
-            console.log('Filtering by exact date:', query);
-            supabaseQuery = supabaseQuery.eq('NFD', query);
-          } else {
-            // Fix: Use proper format for OR conditions in Supabase
-            console.log('Filtering by text search:', query);
-            supabaseQuery = supabaseQuery.or(`"Client Name".ilike.%${query}%,"Mobile".ilike.%${query}%`);
-          }
-        }
       }
 
       // Apply source filter
@@ -189,9 +202,16 @@ export default function EnquiryList() {
     };
   }, [searchQuery, filterSource, filterEmployee, currentCategory]);
 
+  // Function to handle search input changes
   const handleSearch = (query: string) => {
+    console.log('Search query updated:', query);
+    // Don't trim here - accept empty strings too
     setSearchQuery(query);
-    setCurrentCategory(''); // Clear category when searching explicitly
+    
+    // Only clear category when there's an actual search query
+    if (query) {
+      setCurrentCategory(''); // Clear category when searching explicitly
+    }
   };
 
   const handleCategoryChange = (category: string) => {
@@ -203,7 +223,10 @@ export default function EnquiryList() {
     <div className="fade-in">
       {/* SearchParams Handling (wrapped in Suspense) */}
       <Suspense fallback={null}>
-        <SearchParamsHandler onSearchChange={setSearchQuery} onCategoryChange={handleCategoryChange} />
+        <SearchParamsHandler 
+          onSearchChange={handleSearch} 
+          onCategoryChange={handleCategoryChange} 
+        />
       </Suspense>
       
       {/* Hero Section */}
