@@ -691,6 +691,7 @@ const CategoryCard = ({ title, count, icon, enquiries, colorClass }: {
   };
 
   // Get today's date in DD/MM/YYYY format
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const getTodayDate = () => {
     const today = new Date();
     return `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}/${today.getFullYear()}`;
@@ -803,10 +804,10 @@ const CategoryCard = ({ title, count, icon, enquiries, colorClass }: {
                   </div>
                 </div>
                 {/* Show progress type if available */}
-                {(enquiry as any).progressType && (
+                {(enquiry as EnquiryWithProgress).progressType && (
                   <div className="mt-1">
                     {(() => {
-                      const progressInfo = getProgressTypeDisplay((enquiry as any).progressType);
+                      const progressInfo = getProgressTypeDisplay((enquiry as EnquiryWithProgress).progressType || '');
                       return progressInfo ? (
                         <div className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${progressInfo.colorClass}`}>
                           {progressInfo.label}

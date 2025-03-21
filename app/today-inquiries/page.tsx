@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '../utils/supabase';
-import { InquirySource } from '../types';
 
 interface Inquiry {
   id: string | number;
@@ -33,7 +32,7 @@ interface EnquiryRecord {
   "Enquiry Source"?: string;
   "Assigned To"?: string;
   "Created Date"?: string;
-  [key: string]: any;  // For other potential fields
+  [key: string]: string | number | boolean | null | undefined;  // For other potential fields
 }
 
 interface ProgressRecord {
@@ -43,8 +42,8 @@ interface ProgressRecord {
   remark?: string;
   date?: string;
   created_at?: string;
-  enquiries?: EnquiryRecord | any;  // Accept any structure that might come from Supabase
-  [key: string]: any;  // For other potential fields
+  enquiries?: EnquiryRecord;  // Specifically typed to EnquiryRecord
+  [key: string]: string | number | boolean | null | undefined | EnquiryRecord;  // For other potential fields
 }
 
 export default function TodayInquiries() {
@@ -248,7 +247,7 @@ export default function TodayInquiries() {
         <div className="relative py-12 px-8 text-white">
           <div className="flex flex-col md:flex-row md:items-center justify-between mb-6">
             <div>
-              <h1 className="text-3xl font-bold mb-2">Today's Inquiries</h1>
+              <h1 className="text-3xl font-bold mb-2">Today&apos;s Inquiries</h1>
               <p className="text-[#e5d0b1] max-w-2xl">
                 All inquiries scheduled for today, including NFD and progress activities
               </p>
@@ -272,7 +271,7 @@ export default function TodayInquiries() {
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-bold flex items-center">
               <span className="inline-block w-1.5 h-5 bg-[#c69c6d] rounded-full mr-2"></span>
-              Today's Inquiry List
+              Today&apos;s Inquiry List
             </h2>
             <div className="flex items-center gap-2">
               <span className="text-sm text-gray-600 dark:text-gray-400">
