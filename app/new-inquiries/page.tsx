@@ -80,15 +80,40 @@ export default function NewInquiries() {
       
       console.log('Fetching new inquiries...');
       
-      // Fetch from enquiries table where Enquiry Progress = 'New'
-      const { data, error } = await supabase
+      // First, get all inquiry IDs from the Inquiry_Progress table
+      const { data: progressData, error: progressError } = await supabase
+        .from('Inquiry_Progress')
+        .select('eid');
+        
+      if (progressError) {
+        console.error('Error fetching from Inquiry_Progress table:', progressError);
+        throw progressError;
+      }
+      
+      // Extract the eids (inquiry ids) that have progress entries
+      const inquiryIdsWithProgress = progressData.map(item => item.eid);
+      console.log('Inquiries with progress entries:', inquiryIdsWithProgress.length, inquiryIdsWithProgress);
+      
+      // Query to get new inquiries EXCLUDING any that have matching IDs in Inquiry_Progress table
+      let query = supabase
         .from('enquiries')
         .select('*')
         .eq('Enquiry Progress', 'New');
+        
+      // If there are inquiries with progress, exclude them
+      if (inquiryIdsWithProgress.length > 0) {
+        // This ensures that any inquiry ID that matches an eid in Inquiry_Progress is excluded
+        query = query.not('id', 'in', `(${inquiryIdsWithProgress.join(',')})`);
+      }
+      
+      const { data, error } = await query;
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching from enquiries table:', error);
+        throw error;
+      }
 
-      console.log('New inquiries fetched:', data?.length || 0);
+      console.log('New inquiries fetched (EXCLUDING those with ANY progress entries):', data?.length || 0);
       
       // Ensure data is treated as EnquiryRecord[]
       const typedData = data as EnquiryRecord[];
@@ -111,7 +136,7 @@ export default function NewInquiries() {
         nfd: enquiry.NFD || ''
       }));
       
-      console.log('Transformed new inquiries:', transformedData.length);
+      console.log('Final list of new inquiries (with NO progress entries):', transformedData.length);
       setInquiries(transformedData);
       setFilteredInquiries(transformedData);
     } catch (error) {

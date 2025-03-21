@@ -6,8 +6,6 @@ import { getEnquiries } from './utils/localStorage';
 import { useInitializeData } from './utils/initializeData';
 import SearchBar from './components/SearchBar';
 import Link from 'next/link';
-import { InquiryProgress } from './types/inquiry';
-import InquiryProgressTracker from './components/InquiryProgress';
 import { supabase } from './utils/supabase';
 
 // Commented out as it's not currently used
@@ -34,14 +32,11 @@ import { supabase } from './utils/supabase';
 export default function Home() {
   useInitializeData();
   
-  const [stats, setStats] = useState<DashboardStats>({
-    newEnquiries: 0,
+  const [stats, setStats] = useState({
     totalEnquiries: 0,
+    newEnquiries: 0,
     pendingSiteVisits: 0,
-    totalSales: 0,
-    monthlySales: 0,
-    weeklySales: 0,
-    dailySales: 0
+    totalSales: 0
   });
   
   const [categorizedEnquiries, setCategorizedEnquiries] = useState<{
@@ -58,32 +53,79 @@ export default function Home() {
     weekend: []
   });
 
-  const [activities, setActivities] = useState<{
-    title: string;
-    description: string;
-    time: string;
-    icon: 'document' | 'calendar' | 'folder' | 'currency';
-  }[]>([]);
-
   const [isLoading, setIsLoading] = useState(true);
   
   // Function to fetch enquiry counts from Supabase
   const fetchEnquiryCounts = async () => {
     try {
-      // Get total count
-      const { count: totalCount, error: totalError } = await supabase
+      // First, get inquiry IDs from the Inquiry_Progress table that have "deal_lost" progress type
+      const { data: dealLostData, error: dealLostError } = await supabase
+        .from('Inquiry_Progress')
+        .select('eid')
+        .eq('progress_type', 'deal_lost');
+        
+      if (dealLostError) {
+        console.error('Error fetching deal_lost entries from Inquiry_Progress table:', dealLostError);
+        throw dealLostError;
+      }
+      
+      // Extract the eids (inquiry ids) that have deal_lost progress entries
+      const dealLostInquiryIds = dealLostData.map(item => item.eid);
+      console.log('Inquiries with deal_lost progress to exclude from counts:', dealLostInquiryIds.length);
+      
+      // Get total count, excluding deal_lost inquiries
+      let totalCountQuery = supabase
         .from('enquiries')
         .select('*', { count: 'exact', head: true });
+        
+      // Exclude inquiries with deal_lost progress if there are any
+      if (dealLostInquiryIds.length > 0) {
+        totalCountQuery = totalCountQuery.not('id', 'in', `(${dealLostInquiryIds.join(',')})`);
+      }
+      
+      const { count: totalCount, error: totalError } = await totalCountQuery;
 
       if (totalError) throw totalError;
 
-      // Get new enquiries count (where Enquiry Progress is 'New')
-      const { count: newCount, error: newError } = await supabase
+      // Get new inquiries count using the same logic as the new-inquiries page:
+      // First, get all inquiry IDs from the Inquiry_Progress table
+      const { data: progressData, error: progressError } = await supabase
+        .from('Inquiry_Progress')
+        .select('eid');
+        
+      if (progressError) {
+        console.error('Error fetching from Inquiry_Progress table:', progressError);
+        throw progressError;
+      }
+      
+      // Extract the eids (inquiry ids) that have progress entries
+      const inquiryIdsWithProgress = progressData.map(item => item.eid);
+      
+      // Query to count new inquiries EXCLUDING any that have matching IDs in Inquiry_Progress table
+      let newInquiriesQuery = supabase
         .from('enquiries')
         .select('*', { count: 'exact', head: true })
         .eq('Enquiry Progress', 'New');
+        
+      // If there are inquiries with progress, exclude them
+      if (inquiryIdsWithProgress.length > 0) {
+        // This ensures that any inquiry ID that matches an eid in Inquiry_Progress is excluded
+        newInquiriesQuery = newInquiriesQuery.not('id', 'in', `(${inquiryIdsWithProgress.join(',')})`);
+      }
+      
+      // Also exclude deal_lost inquiries from new inquiries count
+      if (dealLostInquiryIds.length > 0) {
+        newInquiriesQuery = newInquiriesQuery.not('id', 'in', `(${dealLostInquiryIds.join(',')})`);
+      }
+      
+      const { count: newCount, error: newError } = await newInquiriesQuery;
 
-      if (newError) throw newError;
+      if (newError) {
+        console.error('Error counting new inquiries:', newError);
+        throw newError;
+      }
+
+      console.log('New inquiries count (excluding those with progress and deal_lost):', newCount);
 
       // Get today's site visits from Inquiry_Progress table
       const today = new Date();
@@ -127,27 +169,50 @@ export default function Home() {
       
       console.log('Fetching today\'s data with date:', formattedDate);
       
+      // First, get inquiry IDs from the Inquiry_Progress table that have "deal_lost" progress type
+      const { data: dealLostData, error: dealLostError } = await supabase
+        .from('Inquiry_Progress')
+        .select('eid')
+        .eq('progress_type', 'deal_lost');
+        
+      if (dealLostError) {
+        console.error('Error fetching deal_lost entries from Inquiry_Progress table:', dealLostError);
+        throw dealLostError;
+      }
+      
+      // Extract the eids (inquiry ids) that have deal_lost progress entries
+      const dealLostInquiryIds = dealLostData.map(item => item.eid);
+      console.log('Inquiries with deal_lost progress to exclude from today\'s inquiries:', dealLostInquiryIds.length);
+      
       // PART 1: Fetch from enquiries table where NFD = today
       console.log('Fetching from enquiries table where NFD =', formattedDate);
-      const { data: nfdData, error: nfdError } = await supabase
+      let nfdQuery = supabase
         .from('enquiries')
         .select('*')
         .eq('NFD', formattedDate);
+        
+      // Exclude inquiries with deal_lost progress if there are any
+      if (dealLostInquiryIds.length > 0) {
+        nfdQuery = nfdQuery.not('id', 'in', `(${dealLostInquiryIds.join(',')})`);
+      }
+      
+      const { data: nfdData, error: nfdError } = await nfdQuery;
 
       if (nfdError) throw nfdError;
 
-      console.log('Enquiries with NFD = today:', nfdData?.length || 0);
+      console.log('Enquiries with NFD = today (excluding deal_lost):', nfdData?.length || 0);
       
       // PART 2: Fetch from Inquiry_Progress table where date = today
       console.log('Fetching from Inquiry_Progress table where date =', formattedDate);
       const { data: progressData, error: progressError } = await supabase
         .from('Inquiry_Progress')
         .select('*, enquiries:eid(*)')
-        .eq('date', formattedDate);
+        .eq('date', formattedDate)
+        .not('progress_type', 'eq', 'deal_lost'); // Exclude deal_lost progress entries
 
       if (progressError) throw progressError;
 
-      console.log('Inquiry_Progress entries with date = today:', progressData?.length || 0);
+      console.log('Inquiry_Progress entries with date = today (excluding deal_lost):', progressData?.length || 0);
       
       // Filter out completed or cancelled inquiries from NFD data
       const filteredNfdData = nfdData.filter(enquiry => {
@@ -229,10 +294,32 @@ export default function Home() {
       // Parse yesterday's date for comparison
       const [yesterdayDay, yesterdayMonth, yesterdayYear] = yesterdayFormatted.split('/').map(Number);
       
-      // Fetch all enquiries
-      const { data, error } = await supabase
+      // First, get inquiry IDs from the Inquiry_Progress table that have "deal_lost" progress type
+      const { data: dealLostData, error: dealLostError } = await supabase
+        .from('Inquiry_Progress')
+        .select('eid')
+        .eq('progress_type', 'deal_lost');
+        
+      if (dealLostError) {
+        console.error('Error fetching deal_lost entries from Inquiry_Progress table:', dealLostError);
+        throw dealLostError;
+      }
+      
+      // Extract the eids (inquiry ids) that have deal_lost progress entries
+      const dealLostInquiryIds = dealLostData.map(item => item.eid);
+      console.log('Inquiries with deal_lost progress to exclude from due inquiries:', dealLostInquiryIds.length);
+      
+      // Fetch all enquiries, excluding those with deal_lost progress
+      let enquiriesQuery = supabase
         .from('enquiries')
         .select('*');
+        
+      // Exclude inquiries with deal_lost progress if there are any
+      if (dealLostInquiryIds.length > 0) {
+        enquiriesQuery = enquiriesQuery.not('id', 'in', `(${dealLostInquiryIds.join(',')})`);
+      }
+      
+      const { data, error } = await enquiriesQuery;
 
       if (error) throw error;
       
@@ -286,13 +373,37 @@ export default function Home() {
       yesterday.setDate(today.getDate() - 1);
       const yesterdayFormatted = `${String(yesterday.getDate()).padStart(2, '0')}/${String(yesterday.getMonth() + 1).padStart(2, '0')}/${yesterday.getFullYear()}`;
       
-      // Fetch enquiries where NFD is yesterday
-      const { data, error } = await supabase
+      // First, get inquiry IDs from the Inquiry_Progress table that have "deal_lost" progress type
+      const { data: dealLostData, error: dealLostError } = await supabase
+        .from('Inquiry_Progress')
+        .select('eid')
+        .eq('progress_type', 'deal_lost');
+        
+      if (dealLostError) {
+        console.error('Error fetching deal_lost entries from Inquiry_Progress table:', dealLostError);
+        throw dealLostError;
+      }
+      
+      // Extract the eids (inquiry ids) that have deal_lost progress entries
+      const dealLostInquiryIds = dealLostData.map(item => item.eid);
+      console.log('Inquiries with deal_lost progress to exclude from yesterday\'s inquiries:', dealLostInquiryIds.length);
+      
+      // Fetch enquiries where NFD is yesterday, excluding those with deal_lost progress
+      let enquiriesQuery = supabase
         .from('enquiries')
         .select('*')
         .eq('NFD', yesterdayFormatted);
+        
+      // Exclude inquiries with deal_lost progress if there are any
+      if (dealLostInquiryIds.length > 0) {
+        enquiriesQuery = enquiriesQuery.not('id', 'in', `(${dealLostInquiryIds.join(',')})`);
+      }
+      
+      const { data, error } = await enquiriesQuery;
 
       if (error) throw error;
+      
+      console.log('Yesterday\'s enquiries (excluding deal_lost):', data.length);
       
       // Transform the data to match the Enquiry type
       const transformedData: Enquiry[] = data.map(enquiry => ({
@@ -328,9 +439,57 @@ export default function Home() {
         setIsLoading(true);
         console.log('Starting to load dashboard data...');
         
-        // Get enquiries from localStorage
-        const localStorageEnquiries = getEnquiries();
-        console.log('Local storage enquiries:', localStorageEnquiries.length);
+        // Get new inquiries from Supabase using the same logic that excludes inquiries with progress entries
+        console.log('Fetching new inquiries...');
+        
+        // First, get all inquiry IDs from the Inquiry_Progress table
+        const { data: progressData, error: progressError } = await supabase
+          .from('Inquiry_Progress')
+          .select('eid');
+          
+        if (progressError) {
+          console.error('Error fetching from Inquiry_Progress table:', progressError);
+          throw progressError;
+        }
+        
+        // Extract the eids (inquiry ids) that have progress entries
+        const inquiryIdsWithProgress = progressData.map(item => item.eid);
+        console.log('Inquiries with progress entries:', inquiryIdsWithProgress.length);
+        
+        // Query to get new inquiries EXCLUDING any that have matching IDs in Inquiry_Progress table
+        let newInquiriesQuery = supabase
+          .from('enquiries')
+          .select('*')
+          .eq('Enquiry Progress', 'New');
+          
+        // If there are inquiries with progress, exclude them
+        if (inquiryIdsWithProgress.length > 0) {
+          // This ensures that any inquiry ID that matches an eid in Inquiry_Progress is excluded
+          newInquiriesQuery = newInquiriesQuery.not('id', 'in', `(${inquiryIdsWithProgress.join(',')})`);
+        }
+        
+        const { data: newInquiriesData, error: newInquiriesError } = await newInquiriesQuery;
+
+        if (newInquiriesError) {
+          console.error('Error fetching new inquiries from Supabase:', newInquiriesError);
+          throw newInquiriesError;
+        }
+
+        console.log('New inquiries fetched (excluding those with progress):', newInquiriesData?.length || 0);
+        
+        // Transform the new inquiries data to match the Enquiry type for the dashboard
+        const newInquiries = newInquiriesData.map(enquiry => ({
+          id: enquiry.id,
+          clientName: enquiry["Client Name"] || 'Unknown Client',
+          mobile: enquiry.Mobile || '',
+          configuration: enquiry.Configuration || '',
+          description: enquiry["Last Remarks"] || '',
+          status: enquiry["Enquiry Progress"]?.toLowerCase() || 'new',
+          source: (enquiry["Enquiry Source"] || 'REF') as InquirySource,
+          assignedEmployee: enquiry["Assigned To"] || '',
+          dateCreated: enquiry["Created Date"] || new Date().toISOString(),
+          category: 'new' as const // Use 'as const' to ensure proper typing
+        }));
         
         // Get today's enquiries from Supabase
         console.log('Fetching today\'s enquiries...');
@@ -347,13 +506,17 @@ export default function Home() {
         const yesterdaysEnquiries = await fetchYesterdaysEnquiries();
         console.log("Yesterday's enquiries loaded:", yesterdaysEnquiries.length);
         
+        // Get weekend enquiries from localStorage (keeping this unchanged for now)
+        const localStorageEnquiries = getEnquiries();
+        const weekendEnquiries = localStorageEnquiries.filter(e => e.category === 'weekend');
+        
         // Categorize enquiries
         const categorized = {
-          new: localStorageEnquiries.filter(e => e.category === 'new'),
-          today: todaysEnquiries, // Use Supabase data for today's enquiries
-          yesterday: yesterdaysEnquiries, // Use Supabase data for yesterday's enquiries
-          due: dueEnquiries, // Use Supabase data for due enquiries
-          weekend: localStorageEnquiries.filter(e => e.category === 'weekend')
+          new: newInquiries, // Use Supabase data for new inquiries with exclusion logic
+          today: todaysEnquiries, 
+          yesterday: yesterdaysEnquiries,
+          due: dueEnquiries,
+          weekend: weekendEnquiries
         };
         
         console.log('Categorized enquiries:', {
@@ -365,34 +528,6 @@ export default function Home() {
         });
         
         setCategorizedEnquiries(categorized);
-
-        // Create sample activities
-        setActivities([
-          {
-            title: "New Enquiry Added",
-            description: "Raj Sharma - 2BHK in downtown area",
-            time: "Just now",
-            icon: "document"
-          },
-          {
-            title: "Site Visit Scheduled",
-            description: "Priya Patel - For 3BHK with garden",
-            time: "2 hours ago",
-            icon: "calendar"
-          },
-          {
-            title: "Property Listed",
-            description: "New 4BHK Luxury Apartment in City Center",
-            time: "Yesterday",
-            icon: "folder"
-          },
-          {
-            title: "Deal Closed",
-            description: "Amit Singh - 1BHK for ₹25,00,000",
-            time: "2 days ago",
-            icon: "currency"
-          }
-        ]);
 
         // Simulate loading for UI polish
         setTimeout(() => {
@@ -423,18 +558,6 @@ export default function Home() {
   //   siteVisitsTrend: -5,
   //   conversionRate: 15,
   // };
-
-  const recentProgress: InquiryProgress = {
-    id: '1',
-    inquiryId: '1',
-    progressType: 'phone_call',
-    status: 'in_progress',
-    remarks: 'Client showed interest in the property. Following up next week.',
-    leadSource: 'System',
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    createdBy: 'Maulik Jadav'
-  };
 
   return (
     <div className="fade-in">
@@ -502,7 +625,7 @@ export default function Home() {
           </div>
           
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2 space-y-6">
+            <div className="lg:col-span-3 space-y-6">
               {/* Categorized Enquiries */}
               <h2 className="text-2xl font-bold text-gray-800 dark:text-white flex items-center">
                 <span className="inline-block w-1.5 h-5 bg-[#c69c6d] rounded-full mr-2"></span>
@@ -548,82 +671,6 @@ export default function Home() {
                   enquiries={categorizedEnquiries.weekend}
                   colorClass="from-amber-500/20 to-amber-600/20 border-amber-200 dark:border-amber-800/30"
                 />
-              </div>
-            </div>
-            
-            {/* Activity Summary */}
-            <div className="space-y-6">
-              <h2 className="text-2xl font-bold text-gray-800 dark:text-white flex items-center">
-                <span className="inline-block w-1.5 h-5 bg-[#c69c6d] rounded-full mr-2"></span>
-                Recent Activity
-              </h2>
-              
-              <div className="premium-card p-6">
-                <div className="space-y-5">
-                  {activities.map((activity, idx) => (
-                    <ActivityItem 
-                      key={idx}
-                      title={activity.title}
-                      description={activity.description}
-                      time={activity.time}
-                      icon={
-                        activity.icon === 'document' ? <DocumentIcon /> : 
-                        activity.icon === 'calendar' ? <CalendarIcon /> : 
-                        activity.icon === 'folder' ? <FolderIcon /> : 
-                        <CurrencyIcon />
-                      }
-                    />
-                  ))}
-                </div>
-              </div>
-              
-              {/* Quick Actions */}
-              <div className="premium-card p-6">
-                <h3 className="text-lg font-bold mb-3 text-gray-800 dark:text-white">Quick Actions</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <Link href="/enquiry/new" className="premium-button-accent text-center">
-                    Add Enquiry
-                  </Link>
-                  <Link href="/site-visits" className="premium-button text-center">
-                    Schedule Visit
-                  </Link>
-                  <Link href="/enquiry/list" className="premium-button text-center">
-                    View Enquiries
-                  </Link>
-                  <Link href="/enquiry/portal" className="premium-button-accent text-center">
-                    Portal Enquiries
-                  </Link>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-xl font-semibold mb-4">Recent Activity</h2>
-              <div className="space-y-4">
-                <InquiryProgressTracker
-                  progress={recentProgress}
-                  isEditable={false}
-                />
-              </div>
-            </div>
-
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-xl font-semibold mb-4">Quick Actions</h2>
-              <div className="grid grid-cols-2 gap-4">
-                <button className="bg-blue-500 text-white p-4 rounded-lg hover:bg-blue-600 transition-colors">
-                  New Inquiry
-                </button>
-                <button className="bg-green-500 text-white p-4 rounded-lg hover:bg-green-600 transition-colors">
-                  Schedule Visit
-                </button>
-                <button className="bg-purple-500 text-white p-4 rounded-lg hover:bg-purple-600 transition-colors">
-                  Add Remark
-                </button>
-                <button className="bg-yellow-500 text-white p-4 rounded-lg hover:bg-yellow-600 transition-colors">
-                  Generate Report
-                </button>
               </div>
             </div>
           </div>
@@ -831,26 +878,6 @@ const CategoryCard = ({ title, count, icon, enquiries, colorClass }: {
         )}
       </div>
     </Link>
-  );
-};
-
-const ActivityItem = ({ title, description, time, icon }: {
-  title: string;
-  description: string;
-  time: string;
-  icon: React.ReactNode;
-}) => {
-  return (
-    <div className="flex gap-4">
-      <div className="h-10 w-10 rounded-full bg-[#1a2e29]/10 dark:bg-[#c69c6d]/10 flex items-center justify-center text-[#1a2e29] dark:text-[#c69c6d] shrink-0">
-        {icon}
-      </div>
-      <div className="flex-1 border-b border-gray-100 dark:border-gray-800 pb-4">
-        <div className="font-medium text-gray-800 dark:text-white">{title}</div>
-        <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">{description}</div>
-        <div className="text-xs text-gray-400 dark:text-gray-500 mt-1">{time}</div>
-      </div>
-    </div>
   );
 };
 

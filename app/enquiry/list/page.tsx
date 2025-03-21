@@ -94,10 +94,31 @@ export default function EnquiryList() {
       yesterday.setDate(today.getDate() - 1);
       
       console.log('Fetching enquiries with query:', query, 'source:', source, 'employee:', employee, 'category:', category);
+
+      // First, get inquiry IDs from the Inquiry_Progress table that have "deal_lost" progress type
+      const { data: dealLostData, error: dealLostError } = await supabase
+        .from('Inquiry_Progress')
+        .select('eid')
+        .eq('progress_type', 'deal_lost');
+        
+      if (dealLostError) {
+        console.error('Error fetching deal_lost entries from Inquiry_Progress table:', dealLostError);
+        throw dealLostError;
+      }
       
+      // Extract the eids (inquiry ids) that have deal_lost progress entries
+      const dealLostInquiryIds = dealLostData.map(item => item.eid);
+      console.log('Inquiries with deal_lost progress entries to exclude:', dealLostInquiryIds.length);
+      
+      // Start building the query
       let supabaseQuery = supabase
         .from('enquiries')
         .select('*');
+
+      // Exclude inquiries with deal_lost progress if there are any
+      if (dealLostInquiryIds.length > 0) {
+        supabaseQuery = supabaseQuery.not('id', 'in', `(${dealLostInquiryIds.join(',')})`);
+      }
 
       // Date regex pattern for DD/MM/YYYY format
       const dateRegex = /^\d{2}\/\d{2}\/\d{4}$/;
@@ -148,11 +169,56 @@ export default function EnquiryList() {
       }
 
       if (data) {
-        console.log('Fetched data count:', data.length);
+        console.log('Fetched data count (after excluding deal_lost inquiries):', data.length);
         
         // Check if we're filtering by today's date, and show some NFD values
         if (dateRegex.test(query)) {
           console.log('NFD values in results:', data.map(item => item.NFD));
+        }
+        
+        // For "New" inquiries, get the latest remarks from Inquiry_Progress table
+        const newInquiries = data.filter(enquiry => enquiry["Enquiry Progress"] === "New");
+        console.log('Number of New inquiries to check for progress remarks:', newInquiries.length);
+        
+        if (newInquiries.length > 0) {
+          // Get all inquiry IDs that are "New"
+          const newInquiryIds = newInquiries.map(enquiry => enquiry.id);
+          
+          // Fetch progress entries for these "New" inquiries
+          const { data: progressData, error: progressError } = await supabase
+            .from('Inquiry_Progress')
+            .select('*')
+            .in('eid', newInquiryIds)
+            .order('created_at', { ascending: false });
+            
+          if (progressError) {
+            console.error('Error fetching progress entries for new inquiries:', progressError);
+          } else if (progressData && progressData.length > 0) {
+            console.log('Found progress entries for new inquiries:', progressData.length);
+            
+            // Create a map to store the latest progress entry for each inquiry
+            const latestProgressByInquiry = new Map();
+            
+            // Group by eid and keep only the most recent entry (which should be first due to our sorting)
+            progressData.forEach(progress => {
+              if (!latestProgressByInquiry.has(progress.eid)) {
+                latestProgressByInquiry.set(progress.eid, progress);
+              }
+            });
+            
+            console.log('Number of new inquiries with progress entries:', latestProgressByInquiry.size);
+            
+            // Update the "Last Remarks" field with the latest remark from progress entries
+            data.forEach(enquiry => {
+              if (enquiry["Enquiry Progress"] === "New" && latestProgressByInquiry.has(enquiry.id)) {
+                const latestProgress = latestProgressByInquiry.get(enquiry.id);
+                if (latestProgress.remark) {
+                  console.log(`Updating Last Remarks for inquiry ${enquiry.id} with progress remark`);
+                  enquiry["Last Remarks"] = latestProgress.remark;
+                }
+              }
+            });
+          }
         }
         
         // Additional client-side filtering for 'due' category
@@ -336,10 +402,15 @@ export default function EnquiryList() {
       <div className="premium-card overflow-hidden">
         <div className="p-6 pb-0">
           <div className="flex justify-between items-center">
-            <h2 className="text-xl font-bold flex items-center">
-              <span className="inline-block w-1.5 h-5 bg-[#c69c6d] rounded-full mr-2"></span>
-              Enquiry List
-            </h2>
+            <div>
+              <h2 className="text-xl font-bold flex items-center">
+                <span className="inline-block w-1.5 h-5 bg-[#c69c6d] rounded-full mr-2"></span>
+                Enquiry List
+              </h2>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                Note: Inquiries with "Deal Lost" progress are not displayed in this list
+              </p>
+            </div>
             <div className="flex items-center gap-2">
               <span className="text-sm text-gray-600 dark:text-gray-400">
                 Showing {filteredEnquiries.length} of {enquiries.length} enquiries
