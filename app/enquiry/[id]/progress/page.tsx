@@ -222,10 +222,10 @@ export default function InquiryProgressPage() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-6 sm:py-8">
       {/* Header */}
-      <div className="mb-8">
-        <div className="flex justify-between items-center mb-6">
+      <div className="mb-6 sm:mb-8">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-4 sm:mb-6">
           <div>
             <Link
               href={`/enquiry/${id}`}
@@ -233,14 +233,14 @@ export default function InquiryProgressPage() {
             >
               ← Back to Enquiry Details
             </Link>
-            <h1 className="text-2xl font-bold">Inquiry Progress History</h1>
+            <h1 className="text-xl sm:text-2xl font-bold">Inquiry Progress History</h1>
             {inquiryData && (
-              <p className="text-gray-600 mt-1">Client: {inquiryData["Client Name"]}</p>
+              <p className="text-gray-600 mt-1 text-sm sm:text-base">Client: {inquiryData["Client Name"]}</p>
             )}
           </div>
           <button
             onClick={() => setShowAddProgress(true)}
-            className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors"
+            className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors sm:self-start w-full sm:w-auto"
           >
             Add Progress
           </button>
@@ -258,19 +258,19 @@ export default function InquiryProgressPage() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Follow-up Date
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Date
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Progress Type
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Type
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Remarks
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="hidden sm:table-cell px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Added At
                   </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
@@ -278,28 +278,28 @@ export default function InquiryProgressPage() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {progressHistory.map((progress) => (
                   <tr key={progress.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">
                       {progress.date}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getProgressTypeColor(progress.progress_type)}`}>
+                    <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
+                      <span className={`px-1.5 sm:px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getProgressTypeColor(progress.progress_type)}`}>
                         {getProgressTypeLabel(progress.progress_type)}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-gray-500 max-w-[150px] sm:max-w-xs truncate">
                       {progress.remark}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="hidden sm:table-cell px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">
                       {new Date(progress.created_at).toLocaleString()}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-right text-xs sm:text-sm font-medium">
                       <div className="flex justify-end space-x-2">
                         <button
                           onClick={() => handleEditClick(progress)}
                           className="text-indigo-600 hover:text-indigo-900"
                           title="Edit"
                         >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-5 sm:w-5" viewBox="0 0 20 20" fill="currentColor">
                             <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
                           </svg>
                         </button>
@@ -308,7 +308,7 @@ export default function InquiryProgressPage() {
                           className="text-red-600 hover:text-red-900"
                           title="Delete"
                         >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-5 sm:w-5" viewBox="0 0 20 20" fill="currentColor">
                             <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
                           </svg>
                         </button>
@@ -318,7 +318,7 @@ export default function InquiryProgressPage() {
                 ))}
                 {progressHistory.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
+                    <td colSpan={5} className="px-3 sm:px-6 py-4 text-center text-xs sm:text-sm text-gray-500">
                       No progress history available
                     </td>
                   </tr>
@@ -327,6 +327,11 @@ export default function InquiryProgressPage() {
             </table>
           </div>
         )}
+      </div>
+
+      {/* Mobile View for Progress History (Responsive Alternative) */}
+      <div className="md:hidden mt-4">
+        <div className="text-sm text-gray-500 mb-2">Scroll horizontally to see all data →</div>
       </div>
 
       {/* Add Progress Modal */}

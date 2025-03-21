@@ -331,9 +331,9 @@ export default function EnquiryList() {
           </div>
           
           {/* Filters */}
-          <div className="flex flex-wrap gap-4 mt-6">
+          <div className="flex flex-col sm:flex-row flex-wrap gap-4 mt-6">
             {/* Source Filter */}
-            <div className="relative flex-1 max-w-xs">
+            <div className="relative flex-1 w-full sm:max-w-xs">
               <label className="block text-sm text-[#e5d0b1] mb-1">Filter by Source</label>
               <select 
                 className="w-full appearance-none bg-white/10 backdrop-blur-sm text-white px-4 py-2 pr-8 rounded-lg focus:ring-2 focus:ring-[#c69c6d] focus:outline-none"
@@ -355,7 +355,7 @@ export default function EnquiryList() {
             </div>
 
             {/* Employee Filter */}
-            <div className="relative flex-1 max-w-xs">
+            <div className="relative flex-1 w-full sm:max-w-xs">
               <label className="block text-sm text-[#e5d0b1] mb-1">Filter by Employee</label>
               <select 
                 className="w-full appearance-none bg-white/10 backdrop-blur-sm text-white px-4 py-2 pr-8 rounded-lg focus:ring-2 focus:ring-[#c69c6d] focus:outline-none"
@@ -379,13 +379,13 @@ export default function EnquiryList() {
 
             {/* Filter Stats */}
             {(filterSource !== 'ALL' || filterEmployee !== 'ALL') && (
-              <div className="flex items-end">
+              <div className="flex items-center sm:items-end w-full sm:w-auto mt-2 sm:mt-0">
                 <button
                   onClick={() => {
                     setFilterSource('ALL');
                     setFilterEmployee('ALL');
                   }}
-                  className="text-[#e5d0b1] hover:text-white flex items-center gap-1 px-3 py-2 rounded-lg bg-white/10 backdrop-blur-sm transition-colors"
+                  className="w-full sm:w-auto text-[#e5d0b1] hover:text-white flex items-center justify-center sm:justify-start gap-1 px-3 py-2 rounded-lg bg-white/10 backdrop-blur-sm transition-colors"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
@@ -441,7 +441,7 @@ export default function EnquiryList() {
               <tbody>
                 {filteredEnquiries.map(enquiry => (
                   <tr key={enquiry.id}>
-                    <td>
+                    <td data-label="Client">
                       <div className="flex items-center gap-3">
                         <div className="flex items-center gap-1">
                           <Link
@@ -469,36 +469,36 @@ export default function EnquiryList() {
                         </div>
                       </div>
                     </td>
-                    <td>
+                    <td data-label="Configuration">
                       <div className="font-medium">{enquiry["Configuration"] === 'Unknown' ? 'N/A' : enquiry["Configuration"] || 'N/A'}</div>
                       <div className="text-xs text-gray-500 dark:text-gray-400">{enquiry["Property Type"] === 'Unknown' ? 'N/A' : enquiry["Property Type"] || 'N/A'}</div>
                     </td>
-                    <td>
+                    <td data-label="Source">
                       <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-[#1a2e29]/10 dark:bg-[#c69c6d]/10 text-[#1a2e29] dark:text-[#c69c6d]">
                         {enquiry["Enquiry Source"]}
                       </div>
                     </td>
-                    <td>
+                    <td data-label="Assigned To">
                       <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-[#1a2e29]/10 dark:bg-[#c69c6d]/10 text-[#1a2e29] dark:text-[#c69c6d]">
                         {enquiry["Assigned To"]}
                       </div>
                     </td>
-                    <td>
+                    <td data-label="Progress">
                       <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-[#1a2e29]/10 dark:bg-[#c69c6d]/10 text-[#1a2e29] dark:text-[#c69c6d]">
                         {enquiry["Enquiry Progress"]}
                       </div>
                     </td>
-                    <td>
+                    <td data-label="Next Follow-up">
                       {enquiry["NFD"] || '-'}
                     </td>
-                    <td>
+                    <td data-label="Last Remarks">
                       <div className="max-w-[200px]">
                         <div className="text-sm text-gray-600 dark:text-gray-400 truncate">
                           {enquiry["Last Remarks"] || 'No remarks yet'}
                         </div>
                       </div>
                     </td>
-                    <td>
+                    <td data-label="Created Date">
                       {enquiry["Created Date"] || '-'}
                     </td>
                   </tr>
@@ -506,7 +506,7 @@ export default function EnquiryList() {
                 
                 {filteredEnquiries.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="text-center py-16">
+                    <td colSpan={8} className="text-center py-16 no-label">
                       <div className="flex flex-col items-center">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />

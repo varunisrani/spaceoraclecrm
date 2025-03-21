@@ -73,8 +73,8 @@ const EnquiryDetailsPage = () => {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-6">
+    <div className="container mx-auto px-4 py-6 sm:py-8">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 gap-4">
         <div>
           <Link
             href="/enquiry/list"
@@ -82,64 +82,64 @@ const EnquiryDetailsPage = () => {
           >
             ← Back to Enquiries
           </Link>
-          <h1 className="text-2xl font-bold">Enquiry Details</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">Enquiry Details</h1>
         </div>
-        <div className="space-x-2">
+        <div className="flex flex-wrap gap-2">
           <button
             onClick={() => setShowAddProgress(true)}
-            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 flex-1 sm:flex-none text-sm sm:text-base"
           >
             Add Progress
           </button>
           <button
             onClick={() => setShowAddRemark(true)}
-            className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+            className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 flex-1 sm:flex-none text-sm sm:text-base"
           >
             Add Remark
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         {/* Client Information */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold mb-4">Client Information</h2>
+        <div className="bg-white rounded-lg shadow p-4 sm:p-6">
+          <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">Client Information</h2>
           <div className="space-y-3">
             <div>
-              <label className="text-sm text-gray-500">Client Name</label>
+              <label className="text-xs sm:text-sm text-gray-500">Client Name</label>
               <p className="font-medium">{enquiry.clientName}</p>
             </div>
             <div>
-              <label className="text-sm text-gray-500">Contact Number</label>
+              <label className="text-xs sm:text-sm text-gray-500">Contact Number</label>
               <p className="font-medium">{enquiry.contactNumber}</p>
             </div>
             <div>
-              <label className="text-sm text-gray-500">Property Type</label>
+              <label className="text-xs sm:text-sm text-gray-500">Property Type</label>
               <p className="font-medium">{enquiry.propertyType}</p>
             </div>
             <div>
-              <label className="text-sm text-gray-500">Budget</label>
+              <label className="text-xs sm:text-sm text-gray-500">Budget</label>
               <p className="font-medium">{enquiry.budget}</p>
             </div>
             <div>
-              <label className="text-sm text-gray-500">Source</label>
+              <label className="text-xs sm:text-sm text-gray-500">Source</label>
               <p className="font-medium">{enquiry.source}</p>
             </div>
             <div>
-              <label className="text-sm text-gray-500">Assigned To</label>
+              <label className="text-xs sm:text-sm text-gray-500">Assigned To</label>
               <p className="font-medium">{enquiry.assignedTo}</p>
             </div>
             <div>
-              <label className="text-sm text-gray-500">Requirements</label>
+              <label className="text-xs sm:text-sm text-gray-500">Requirements</label>
               <p className="font-medium">{enquiry.requirements}</p>
             </div>
           </div>
         </div>
 
         {/* Progress History */}
-        <div className="space-y-6">
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-xl font-semibold mb-4">Current Progress</h2>
+        <div className="space-y-4 sm:space-y-6">
+          <div className="bg-white rounded-lg shadow p-4 sm:p-6">
+            <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">Current Progress</h2>
             {enquiry.progress.length > 0 && (
               <InquiryProgressTracker
                 progress={enquiry.progress[enquiry.progress.length - 1]}
@@ -150,16 +150,16 @@ const EnquiryDetailsPage = () => {
             )}
           </div>
 
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-xl font-semibold mb-4">Progress History</h2>
-            <div className="space-y-4">
+          <div className="bg-white rounded-lg shadow p-4 sm:p-6">
+            <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">Progress History</h2>
+            <div className="space-y-3 sm:space-y-4">
               {enquiry.progress.map((progress) => (
                 <div
                   key={progress.id}
-                  className="border-l-4 border-blue-500 pl-4 py-2"
+                  className="border-l-4 border-blue-500 pl-3 sm:pl-4 py-2"
                 >
-                  <div className="font-medium">{progress.status.replace(/_/g, ' ')}</div>
-                  <div className="text-sm text-gray-500">{progress.remarks}</div>
+                  <div className="font-medium text-sm sm:text-base">{progress.status.replace(/_/g, ' ')}</div>
+                  <div className="text-xs sm:text-sm text-gray-500">{progress.remarks}</div>
                   <div className="text-xs text-gray-400 mt-1">
                     {progress.createdAt.toLocaleString()} by {progress.createdBy}
                   </div>
@@ -170,8 +170,8 @@ const EnquiryDetailsPage = () => {
         </div>
 
         {/* Remarks History */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold mb-4">Remarks History</h2>
+        <div className="bg-white rounded-lg shadow p-4 sm:p-6">
+          <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">Remarks History</h2>
           <RemarksHistory
             remarks={enquiry.remarks}
             isEditable={true}
@@ -183,15 +183,15 @@ const EnquiryDetailsPage = () => {
 
       {/* Add Progress Modal */}
       {showAddProgress && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center">
-          <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4">
-            <h2 className="text-xl font-bold mb-4">Add Progress</h2>
-            <div className="space-y-4">
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg p-4 sm:p-6 max-w-2xl w-full">
+            <h2 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4">Add Progress</h2>
+            <div className="space-y-3 sm:space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Status
                 </label>
-                <select className="w-full border rounded-md p-2">
+                <select className="w-full border rounded-md p-2 sm:p-3 text-sm sm:text-base">
                   <option value="in_progress">In Progress</option>
                   <option value="site_visit_scheduled">Site Visit Scheduled</option>
                   <option value="site_visit_done">Site Visit Done</option>
@@ -204,20 +204,20 @@ const EnquiryDetailsPage = () => {
                   Remarks
                 </label>
                 <textarea
-                  className="w-full border rounded-md p-2"
+                  className="w-full border rounded-md p-2 sm:p-3 text-sm sm:text-base"
                   rows={4}
                   placeholder="Add remarks about the progress..."
                 />
               </div>
-              <div className="flex justify-end space-x-2">
+              <div className="flex flex-col sm:flex-row sm:justify-end space-y-2 sm:space-y-0 sm:space-x-2 pt-2">
                 <button
                   onClick={() => setShowAddProgress(false)}
-                  className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
+                  className="bg-gray-500 text-white px-4 py-3 sm:py-2 rounded hover:bg-gray-600 w-full sm:w-auto text-center"
                 >
                   Cancel
                 </button>
                 <button
-                  className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                  className="bg-blue-500 text-white px-4 py-3 sm:py-2 rounded hover:bg-blue-600 w-full sm:w-auto text-center"
                 >
                   Save Progress
                 </button>
@@ -229,29 +229,29 @@ const EnquiryDetailsPage = () => {
 
       {/* Add Remark Modal */}
       {showAddRemark && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center">
-          <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4">
-            <h2 className="text-xl font-bold mb-4">Add Remark</h2>
-            <div className="space-y-4">
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg p-4 sm:p-6 max-w-2xl w-full">
+            <h2 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4">Add Remark</h2>
+            <div className="space-y-3 sm:space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Remark
                 </label>
                 <textarea
-                  className="w-full border rounded-md p-2"
+                  className="w-full border rounded-md p-2 sm:p-3 text-sm sm:text-base"
                   rows={4}
                   placeholder="Add your remark..."
                 />
               </div>
-              <div className="flex justify-end space-x-2">
+              <div className="flex flex-col sm:flex-row sm:justify-end space-y-2 sm:space-y-0 sm:space-x-2 pt-2">
                 <button
                   onClick={() => setShowAddRemark(false)}
-                  className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
+                  className="bg-gray-500 text-white px-4 py-3 sm:py-2 rounded hover:bg-gray-600 w-full sm:w-auto text-center"
                 >
                   Cancel
                 </button>
                 <button
-                  className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+                  className="bg-green-500 text-white px-4 py-3 sm:py-2 rounded hover:bg-green-600 w-full sm:w-auto text-center"
                 >
                   Save Remark
                 </button>

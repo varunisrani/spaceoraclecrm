@@ -153,3 +153,56 @@ h1, h2, h3, h4, h5, h6 {
 .premium-table tr {
   @apply hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors;
 }
+
+/* Mobile responsive tables */
+@media (max-width: 767px) {
+  .premium-table {
+    @apply block;
+  }
+  
+  .premium-table thead {
+    @apply hidden;
+  }
+  
+  .premium-table tbody, .premium-table tr, .premium-table td {
+    @apply block;
+  }
+  
+  .premium-table tr {
+    @apply mb-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700;
+  }
+  
+  .premium-table td {
+    @apply flex justify-between items-center py-3 px-4 text-right border-b border-gray-100 dark:border-gray-800 whitespace-normal;
+  }
+  
+  .premium-table td:last-child {
+    @apply border-b-0;
+  }
+  
+  .premium-table td::before {
+    content: attr(data-label);
+    @apply font-medium text-gray-700 dark:text-gray-300 text-left w-1/2;
+  }
+  
+  /* Special handling for columns that don't need labels */
+  .premium-table td.no-label::before {
+    content: none;
+  }
+  
+  .premium-table td.no-label {
+    @apply justify-center text-center;
+  }
+}
+
+/* Tablet responsive tables - horizontal scrolling for tablets */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .overflow-x-auto {
+    @apply -mx-4 px-4;
+  }
+  
+  .premium-table th,
+  .premium-table td {
+    @apply px-4 py-3;
+  }
+}

@@ -591,9 +591,9 @@ export default function Home() {
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#c69c6d]"></div>
         </div>
       ) : (
-        <div className="space-y-10">
+        <div className="space-y-10 px-2 sm:px-0">
           {/* Quick Stats */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
             <StatCard 
               title="New Enquiries" 
               value={stats.newEnquiries}
@@ -624,15 +624,15 @@ export default function Home() {
             />
           </div>
           
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-3 space-y-6">
+          <div className="grid grid-cols-1 gap-8">
+            <div className="space-y-6">
               {/* Categorized Enquiries */}
               <h2 className="text-2xl font-bold text-gray-800 dark:text-white flex items-center">
                 <span className="inline-block w-1.5 h-5 bg-[#c69c6d] rounded-full mr-2"></span>
                 Enquiries by Category
               </h2>
               
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
                 <CategoryCard 
                   title="New" 
                   count={categorizedEnquiries.new.length}
@@ -656,7 +656,7 @@ export default function Home() {
                 />
               </div>
               
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                 <CategoryCard 
                   title="Yesterday" 
                   count={categorizedEnquiries.yesterday.length}
@@ -715,14 +715,14 @@ const StatCard = ({ title, value, icon, href, color = 'default' }: {
 
   return (
     <Link href={getHref()} className="block">
-      <div className={`p-6 rounded-xl border transition-transform duration-300 hover:scale-105 hover:shadow-md ${getColorClass()}`}>
-        <div className="flex items-center gap-4">
-          <div className="h-14 w-14 rounded-full bg-white/70 dark:bg-gray-800/70 flex items-center justify-center text-[#c69c6d]">
+      <div className={`p-4 sm:p-6 rounded-xl border transition-transform duration-300 hover:scale-105 hover:shadow-md ${getColorClass()}`}>
+        <div className="flex items-center gap-3 sm:gap-4">
+          <div className="h-12 w-12 sm:h-14 sm:w-14 rounded-full bg-white/70 dark:bg-gray-800/70 flex items-center justify-center text-[#c69c6d] flex-shrink-0">
             {icon}
           </div>
           <div>
             <div className="text-sm text-gray-500 dark:text-gray-400">{title}</div>
-            <div className="text-3xl font-bold text-gray-900 dark:text-white">{value}</div>
+            <div className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">{value}</div>
           </div>
         </div>
       </div>
@@ -799,85 +799,73 @@ const CategoryCard = ({ title, count, icon, enquiries, colorClass }: {
       colorClass = 'bg-green-100 text-green-800';
     } else if (progressType.includes('phone')) {
       colorClass = 'bg-blue-100 text-blue-800';
-    } else if (progressType.includes('deal')) {
+    } else if (progressType.includes('deal_done')) {
       colorClass = 'bg-amber-100 text-amber-800';
     }
     
     return { label, colorClass };
   };
 
-  // Check if we should show only count for this category
-  const showOnlyCount = title === 'Today' || title === 'Due' || title === 'Yesterday';
-
   return (
-    <Link 
-      href={getLink(title)}
-      className={`premium-card overflow-hidden border transition-all hover:shadow-md ${colorClass}`}
-    >
-      <div className="p-5">
-        <div className="flex justify-between items-center mb-4">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-full bg-white/70 dark:bg-gray-800/70 flex items-center justify-center text-gray-700 dark:text-gray-300">
-              {icon}
-            </div>
-            <div>
-              <div className="text-lg font-bold text-gray-800 dark:text-white">{title}</div>
-              <div className="text-xs text-gray-500 dark:text-gray-400">{count} Enquiries</div>
-            </div>
-          </div>
+    <div className={`p-5 rounded-xl bg-gradient-to-br border transition-all hover:shadow-md ${colorClass}`}>
+      <div className="flex justify-between items-start mb-5">
+        <div className="flex flex-col">
+          <div className="text-lg font-bold text-gray-800 dark:text-white">{title}</div>
+          <div className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">{count}</div>
         </div>
-        
-        {showOnlyCount ? (
-          <div className="text-center py-6">
-            <div className="text-3xl font-bold text-gray-800 dark:text-white">{count}</div>
-            <div className="text-sm text-gray-500 dark:text-gray-400">Enquiries to follow up</div>
-          </div>
-        ) : (
-          <div className="space-y-3 mb-4">
-            {enquiries.slice(0, 2).map(enquiry => (
-              <div key={enquiry.id} className="p-2 rounded-lg bg-white/70 dark:bg-gray-800/70">
-                <div className="font-medium text-gray-800 dark:text-white truncate">{enquiry.clientName}</div>
-                <div className="flex justify-between items-center mt-1">
-                  <div className="text-xs text-gray-500 dark:text-gray-400">
-                    {enquiry.configuration || 'No Config'}
+        <div className="h-10 w-10 rounded-full bg-white/70 dark:bg-gray-800/70 flex items-center justify-center text-[#c69c6d]">
+          {icon}
+        </div>
+      </div>
+      
+      {/* Inquiry list */}
+      <div>
+        {count > 0 ? (
+          <div className="space-y-3 mt-2 max-h-[250px] overflow-y-auto pr-1 custom-scrollbar">
+            {enquiries.slice(0, 5).map((enquiry, index) => (
+              <Link href={`/enquiry/${enquiry.id}/progress`} key={enquiry.id} className="block">
+                <div className="p-3 rounded-lg bg-white/50 dark:bg-gray-900/30 hover:bg-white/80 dark:hover:bg-gray-900/50 transition-colors">
+                  <div className="flex justify-between">
+                    <div className="text-sm font-medium text-gray-900 dark:text-white truncate max-w-[150px] sm:max-w-[180px]">
+                      {enquiry.clientName}
+                    </div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                      {enquiry.source}
+                    </div>
                   </div>
-                  <div className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(enquiry.status)}`}>
-                    {enquiry.status}
+                  <div className="flex flex-wrap gap-1 mt-1.5">
+                    {(enquiry as EnquiryWithProgress).progressType ? (
+                      <div className={`text-xs px-2 py-0.5 rounded-full ${getProgressTypeDisplay((enquiry as EnquiryWithProgress).progressType!)?.colorClass}`}>
+                        {getProgressTypeDisplay((enquiry as EnquiryWithProgress).progressType!)?.label}
+                      </div>
+                    ) : (
+                      <div className={`text-xs px-2 py-0.5 rounded-full ${getStatusColor(enquiry.status)}`}>
+                        {enquiry.status.replace(/_/g, ' ')}
+                      </div>
+                    )}
                   </div>
                 </div>
-                {/* Show progress type if available */}
-                {(enquiry as EnquiryWithProgress).progressType && (
-                  <div className="mt-1">
-                    {(() => {
-                      const progressInfo = getProgressTypeDisplay((enquiry as EnquiryWithProgress).progressType || '');
-                      return progressInfo ? (
-                        <div className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${progressInfo.colorClass}`}>
-                          {progressInfo.label}
-                        </div>
-                      ) : null;
-                    })()}
-                  </div>
-                )}
-              </div>
+              </Link>
             ))}
-            
-            {count === 0 && (
-              <div className="text-center py-4 text-gray-500 dark:text-gray-400 text-sm">
-                No enquiries in this category
-              </div>
-            )}
           </div>
-        )}
-        
-        {!showOnlyCount && count > 2 && (
-          <div 
-            className="text-xs text-[#1a2e29] dark:text-[#c69c6d] font-medium hover:underline block text-center"
-          >
-            View all {count} enquiries
+        ) : (
+          <div className="text-center py-6 px-3 rounded-lg bg-white/50 dark:bg-gray-900/30">
+            <div className="text-gray-500 dark:text-gray-400">No {title.toLowerCase()} inquiries</div>
           </div>
         )}
       </div>
-    </Link>
+      
+      {count > 0 && (
+        <div className="mt-4">
+          <Link 
+            href={getLink(title)}
+            className="w-full block text-center py-2.5 px-4 rounded-lg bg-white/70 dark:bg-gray-900/40 text-[#1a2e29] dark:text-white hover:bg-white/90 dark:hover:bg-gray-900/60 transition-colors text-sm font-medium"
+          >
+            View All {count > 5 ? `(${count})` : ''}
+          </Link>
+        </div>
+      )}
+    </div>
   );
 };
 

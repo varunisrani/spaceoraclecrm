@@ -92,11 +92,11 @@ export default function NewEnquiry() {
             </div>
           </div>
           
-          <form onSubmit={handleSubmit} className="p-6 pt-2 space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <form onSubmit={handleSubmit} className="p-4 sm:p-6 pt-2 space-y-5 sm:space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
               {/* Client Name */}
               <div>
-                <label htmlFor="Client Name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label htmlFor="Client Name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Client Name
                 </label>
                 <input
@@ -106,14 +106,14 @@ export default function NewEnquiry() {
                   value={formData["Client Name"]}
                   onChange={handleChange}
                   required
-                  className="premium-input w-full"
+                  className="premium-input w-full text-base"
                   placeholder="Enter client's full name"
                 />
               </div>
               
               {/* Mobile Number */}
               <div>
-                <label htmlFor="Mobile" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label htmlFor="Mobile" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Mobile Number
                 </label>
                 <input
@@ -123,16 +123,16 @@ export default function NewEnquiry() {
                   value={formData["Mobile"]}
                   onChange={handleChange}
                   required
-                  className="premium-input w-full"
+                  className="premium-input w-full text-base"
                   placeholder="Enter client's mobile number"
                 />
               </div>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
               {/* Configuration */}
               <div>
-                <label htmlFor="Configuration" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label htmlFor="Configuration" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Configuration (BHK)
                 </label>
                 <input
@@ -143,13 +143,13 @@ export default function NewEnquiry() {
                   onChange={handleChange}
                   required
                   placeholder="e.g. 2BHK, 3BHK"
-                  className="premium-input w-full"
+                  className="premium-input w-full text-base"
                 />
               </div>
               
               {/* Source */}
               <div>
-                <label htmlFor="Enquiry Source" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label htmlFor="Enquiry Source" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Source
                 </label>
                 <select
@@ -157,7 +157,7 @@ export default function NewEnquiry() {
                   name="Enquiry Source"
                   value={formData["Enquiry Source"]}
                   onChange={handleChange}
-                  className="premium-input w-full"
+                  className="premium-input w-full text-base"
                 >
                   <option value="Facebook">Facebook</option>
                   <option value="Reference">Reference</option>
@@ -167,7 +167,7 @@ export default function NewEnquiry() {
 
             {/* Area */}
             <div>
-              <label htmlFor="Area" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label htmlFor="Area" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Area
               </label>
               <input
@@ -176,14 +176,14 @@ export default function NewEnquiry() {
                 name="Area"
                 value={formData["Area"]}
                 onChange={handleChange}
-                className="premium-input w-full"
+                className="premium-input w-full text-base"
                 placeholder="Enter area name"
               />
             </div>
 
             {/* Description */}
             <div>
-              <label htmlFor="Remarks" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label htmlFor="Remarks" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Description
               </label>
               <textarea
@@ -192,15 +192,15 @@ export default function NewEnquiry() {
                 value={formData["Remarks"]}
                 onChange={handleChange}
                 rows={3}
-                className="premium-input w-full"
+                className="premium-input w-full text-base"
                 placeholder="Enter client's requirements and preferences"
               />
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
               {/* Assigned Employee */}
               <div>
-                <label htmlFor="Assigned To" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label htmlFor="Assigned To" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Assigned Employee
                 </label>
                 <select
@@ -208,7 +208,7 @@ export default function NewEnquiry() {
                   name="Assigned To"
                   value={formData["Assigned To"]}
                   onChange={handleChange}
-                  className="premium-input w-full"
+                  className="premium-input w-full text-base"
                 >
                   <option value="Rushirajsinh, Zala">Rushirajsinh, Zala</option>
                   <option value="Maulik, Jadav">Maulik, Jadav</option>
@@ -218,17 +218,17 @@ export default function NewEnquiry() {
             </div>
             
             {/* Submit Button */}
-            <div className="pt-4 flex space-x-4">
+            <div className="pt-4 flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4">
               <Link
                 href="/enquiry/list"
-                className="px-5 py-3 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg font-medium w-full text-center hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                className="px-5 py-4 sm:py-3 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg font-medium w-full text-center hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
               >
                 Cancel
               </Link>
               <button
                 type="submit"
                 disabled={isSaving}
-                className="premium-button w-full flex items-center justify-center gap-2"
+                className="premium-button w-full py-4 sm:py-3 flex items-center justify-center gap-2"
               >
                 {isSaving ? (
                   <>

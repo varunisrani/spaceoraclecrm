@@ -95,26 +95,26 @@ export default function EditInquiryProgressForm({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg max-w-2xl w-full p-6">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold">Edit Progress</h2>
+      <div className="bg-white rounded-lg max-w-2xl w-full p-4 sm:p-6">
+        <div className="flex justify-between items-center mb-3 sm:mb-4">
+          <h2 className="text-lg sm:text-xl font-bold">Edit Progress</h2>
           <button
             onClick={onClose}
             className="text-gray-500 hover:text-gray-700"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700">Progress Type</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Progress Type</label>
             <select
               name="progressType"
               value={formData.progressType}
               onChange={handleInputChange}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm sm:text-base py-2"
               required
               disabled={progressId === 'last-remarks' || progressId === 'remarks'}
             >
@@ -132,12 +132,12 @@ export default function EditInquiryProgressForm({
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-gray-700">Remarks</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Remarks</label>
             <textarea 
               name="remarks"
               value={formData.remarks}
               onChange={handleInputChange}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm sm:text-base"
               rows={3}
               placeholder="Enter remarks..."
               required
@@ -145,31 +145,31 @@ export default function EditInquiryProgressForm({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Date (DD/MM/YYYY)</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Date (DD/MM/YYYY)</label>
             <input 
               type="text"
               name="date"
               value={formData.date}
               onChange={handleInputChange}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm sm:text-base py-2"
               placeholder="Enter date in DD/MM/YYYY format"
               required
             />
           </div>
 
-          <div className="flex justify-end space-x-2 mt-6">
+          <div className="flex flex-col sm:flex-row sm:justify-end space-y-2 sm:space-y-0 sm:space-x-2 mt-4 sm:mt-6">
             <button
               type="button"
               onClick={onClose}
               disabled={isSaving}
-              className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+              className="px-4 py-2.5 sm:py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 w-full sm:w-auto"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSaving}
-              className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 flex items-center gap-2"
+              className="px-4 py-2.5 sm:py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 flex items-center justify-center gap-2 w-full sm:w-auto"
             >
               {isSaving ? (
                 <>
