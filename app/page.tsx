@@ -139,13 +139,23 @@ export default function Home() {
 
       if (siteVisitsError) throw siteVisitsError;
 
-      // Get total deals done count from Inquiry_Progress table
-      const { count: dealsDoneCount, error: dealsError } = await supabase
+      // Get total deals done count from Inquiry_Progress table 
+      // by counting unique inquiry IDs (eids) that have 'deal_done' progress
+      const { data: dealsDoneData, error: dealsError } = await supabase
         .from('Inquiry_Progress')
-        .select('*', { count: 'exact', head: true })
+        .select('eid')
         .eq('progress_type', 'deal_done');
 
-      if (dealsError) throw dealsError;
+      if (dealsError) {
+        console.error('Error fetching deal_done entries:', dealsError);
+        throw dealsError;
+      }
+
+      // Get unique inquiry IDs with 'deal_done' progress
+      const uniqueDealDoneIds = [...new Set(dealsDoneData.map(item => item.eid))];
+      const dealsDoneCount = uniqueDealDoneIds.length;
+      
+      console.log('Total sales (unique inquiries with deal_done progress):', dealsDoneCount);
 
       setStats(prev => ({
         ...prev,
@@ -619,7 +629,7 @@ export default function Home() {
               title="Sales" 
               value={stats.totalSales}
               icon={<CurrencyIcon />}
-              href="#"
+              href="/sales-inquiries"
               color="gold"
             />
           </div>
@@ -709,6 +719,9 @@ const StatCard = ({ title, value, icon, href, color = 'default' }: {
     }
     if (title === "New Enquiries") {
       return '/new-inquiries';
+    }
+    if (title === "Sales") {
+      return '/sales-inquiries';
     }
     return href || '#';
   };
