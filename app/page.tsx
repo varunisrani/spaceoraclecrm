@@ -171,7 +171,7 @@ export default function Home() {
         dateCreated: enquiry["Created Date"] || new Date().toISOString(),
         category: 'today'
       }));
-      
+
       // Transform the Progress data to match the Enquiry type (only if it has a related enquiry)
       const progressTransformedData: Enquiry[] = progressData
         .filter(progress => progress.enquiries) // Only include progress entries with valid enquiry relation

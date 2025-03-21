@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import React from 'react';
+import Image from 'next/image';
 
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
@@ -30,15 +31,15 @@ export default function Navbar() {
       <nav className="premium-container py-4">
         <div className="flex justify-between items-center">
           <Link href="/" className="flex items-center space-x-2">
-            <div className="relative h-10 w-10">
-              <div className="absolute inset-0 rounded-full bg-[#1a2e29] opacity-20 blur-sm"></div>
-              <div className="relative flex items-center justify-center h-full w-full rounded-full bg-gradient-to-br from-[#1a2e29] to-[#264a42]">
-                <span className="text-[#c69c6d] font-bold text-lg">SO</span>
-              </div>
-            </div>
-            <div>
-              <div className="text-[#1a2e29] dark:text-white font-bold text-xl">SPACE ORACLE</div>
-              <div className="text-[#c69c6d] text-xs tracking-wide">DELIVERING SPACES WHERE DREAMS THRIVE</div>
+            <div className="h-12 w-auto relative">
+              <Image 
+                src="https://i.ibb.co/fYLpx9rW/Untitled-design1-1.jpg" 
+                alt="Space Oracle Logo" 
+                width={180} 
+                height={48} 
+                priority
+                className="object-contain"
+              />
             </div>
           </Link>
           
