@@ -225,42 +225,6 @@ export default function TodayInquiries() {
     setSearchQuery(query);
   };
 
-  const getProgressTypeColor = (type: string = ''): string => {
-    if (type.includes('site_visit')) {
-      return 'bg-green-100 text-green-800';
-    } else if (type.includes('phone')) {
-      return 'bg-blue-100 text-blue-800';
-    } else if (type.includes('deal')) {
-      return 'bg-amber-100 text-amber-800';
-    }
-    return 'bg-purple-100 text-purple-800';
-  };
-
-  const getStatusColor = (status: string): string => {
-    const lowerStatus = status.toLowerCase();
-    if (lowerStatus.includes('new')) {
-      return 'bg-blue-100 text-blue-800';
-    } else if (lowerStatus.includes('progress')) {
-      return 'bg-yellow-100 text-yellow-800';
-    } else if (lowerStatus.includes('done') || lowerStatus.includes('completed')) {
-      return 'bg-green-100 text-green-800';
-    } else if (lowerStatus.includes('cancel')) {
-      return 'bg-red-100 text-red-800';
-    }
-    return 'bg-gray-100 text-gray-800';
-  };
-
-  const getSourceBadge = (type: string) => {
-    if (type === 'nfd') {
-      return <span className="px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">NFD</span>;
-    } else if (type === 'progress') {
-      return <span className="px-2 py-1 rounded-full text-xs bg-purple-100 text-purple-800">Progress</span>;
-    } else if (type === 'both') {
-      return <span className="px-2 py-1 rounded-full text-xs bg-indigo-100 text-indigo-800">NFD+Progress</span>;
-    }
-    return null;
-  };
-
   return (
     <div className="fade-in">
       {/* Hero Section */}

@@ -19,21 +19,6 @@ interface Inquiry {
   nfd?: string;
 }
 
-// Supabase response types
-interface EnquiryRecord {
-  id: string | number;
-  "Client Name"?: string;
-  Mobile?: string;
-  Configuration?: string;
-  "Last Remarks"?: string;
-  "Enquiry Progress"?: string;
-  "Enquiry Source"?: string;
-  "Assigned To"?: string;
-  "Created Date"?: string;
-  NFD?: string;
-  [key: string]: string | number | boolean | null | undefined;  // For other potential fields
-}
-
 export default function YesterdayInquiries() {
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [filteredInquiries, setFilteredInquiries] = useState<Inquiry[]>([]);

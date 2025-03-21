@@ -343,9 +343,9 @@ export default function Home() {
         console.log('Due enquiries loaded:', dueEnquiries.length);
         
         // Get yesterday's enquiries from Supabase
-        console.log('Fetching yesterday\'s enquiries...');
+        console.log('Fetching yesterday's enquiries...');
         const yesterdaysEnquiries = await fetchYesterdaysEnquiries();
-        console.log('Yesterday\'s enquiries loaded:', yesterdaysEnquiries.length);
+        console.log('Yesterday's enquiries loaded:', yesterdaysEnquiries.length);
         
         // Categorize enquiries
         const categorized = {
@@ -702,12 +702,6 @@ const CategoryCard = ({ title, count, icon, enquiries, colorClass }: {
   // Convert title to category value for filtering
   const getCategoryValue = (title: string) => {
     return title.toLowerCase();
-  };
-
-  // Get today's date in DD/MM/YYYY format
-  const getTodayDate = () => {
-    const today = new Date();
-    return `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}/${today.getFullYear()}`;
   };
 
   // Get the search parameter based on category
