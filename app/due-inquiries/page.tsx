@@ -180,7 +180,10 @@ export default function DueInquiries() {
           <div className="flex flex-col md:flex-row md:items-center justify-between mb-6">
             <div>
               <h1 className="text-3xl font-bold mb-2">Due Inquiries</h1>
-              <p className="text-[#e5d0b1] max-w-2xl">
+              <div className="text-[#e5d0b1] text-lg font-semibold">
+                {inquiries.length} Inquiries
+              </div>
+              <p className="text-[#e5d0b1] max-w-2xl mt-2">
                 All inquiries with follow-up dates before yesterday
               </p>
             </div>

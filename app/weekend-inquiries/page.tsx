@@ -9,24 +9,48 @@ interface Inquiry {
   id: string | number;
   clientName: string;
   mobile: string;
+  email?: string;
   configuration: string;
   description: string;
   status: string;
   source: string;
   assignedEmployee: string;
   dateCreated: string;
+  budget?: string;
+  area?: string;
   lastRemarks?: string;
   nfd?: string;
 }
 
-export default function YesterdayInquiries() {
+// Supabase response types
+interface EnquiryRecord {
+  id: string | number;
+  "Client Name"?: string;
+  Mobile?: string;
+  Email?: string;
+  "Enquiry For"?: string;
+  "Property Type"?: string;
+  "Assigned To"?: string;
+  "Created Date"?: string;
+  "Enquiry Progress"?: string;
+  Budget?: string;
+  NFD?: string;
+  "Enquiry Source"?: string;
+  Area?: string;
+  Configuration?: string;
+  "Last Remarks"?: string;
+  Remarks?: string;
+  [key: string]: string | number | undefined;
+}
+
+export default function WeekendInquiries() {
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [filteredInquiries, setFilteredInquiries] = useState<Inquiry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState<string>('');
 
   useEffect(() => {
-    fetchYesterdaysInquiries();
+    fetchWeekendInquiries();
   }, []);
 
   // Effect to filter inquiries based on search query
@@ -41,65 +65,66 @@ export default function YesterdayInquiries() {
       inquiry.clientName.toLowerCase().includes(lowerCaseQuery) ||
       inquiry.mobile.toLowerCase().includes(lowerCaseQuery) ||
       inquiry.configuration.toLowerCase().includes(lowerCaseQuery) ||
+      (inquiry.email && inquiry.email.toLowerCase().includes(lowerCaseQuery)) ||
       inquiry.source.toLowerCase().includes(lowerCaseQuery) ||
       inquiry.assignedEmployee.toLowerCase().includes(lowerCaseQuery) ||
-      (inquiry.description && inquiry.description.toLowerCase().includes(lowerCaseQuery)) ||
-      (inquiry.lastRemarks && inquiry.lastRemarks.toLowerCase().includes(lowerCaseQuery))
+      (inquiry.description && inquiry.description.toLowerCase().includes(lowerCaseQuery))
     );
     
     setFilteredInquiries(filtered);
   }, [searchQuery, inquiries]);
 
-  const fetchYesterdaysInquiries = async () => {
+  const fetchWeekendInquiries = async () => {
     try {
       setIsLoading(true);
       
-      // Get yesterday's date in DD/MM/YYYY format
-      const today = new Date();
-      const yesterday = new Date(today);
-      yesterday.setDate(today.getDate() - 1);
-      const yesterdayFormatted = `${String(yesterday.getDate()).padStart(2, '0')}/${String(yesterday.getMonth() + 1).padStart(2, '0')}/${yesterday.getFullYear()}`;
+      console.log('Fetching weekend inquiries...');
       
-      console.log('Fetching yesterday\'s inquiries for date:', yesterdayFormatted);
-      
-      // Fetch inquiries where NFD is yesterday
+      // Get all inquiries from the database
       const { data, error } = await supabase
         .from('enquiries')
-        .select('*')
-        .eq('NFD', yesterdayFormatted);
+        .select('*');
 
-      if (error) throw error;
-      
-      console.log('Yesterday\'s inquiries fetched:', data?.length || 0);
-      
-      // Filter out completed or cancelled inquiries
-      const filteredData = data.filter(enquiry => {
-        const status = (enquiry["Enquiry Progress"] || '').toLowerCase();
-        return !status.includes('done') && !status.includes('cancelled');
+      if (error) {
+        console.error('Error fetching from enquiries table:', error);
+        throw error;
+      }
+
+      // Filter for weekend inquiries (day of week is Saturday=6 or Sunday=0)
+      const weekendInquiries = data.filter(inquiry => {
+        const createdDate = inquiry["Created Date"] ? new Date(inquiry["Created Date"]) : 
+                           (inquiry.created_at ? new Date(inquiry.created_at) : null);
+        
+        if (!createdDate) return false;
+        
+        const dayOfWeek = createdDate.getDay();
+        return dayOfWeek === 0 || dayOfWeek === 6; // 0 = Sunday, 6 = Saturday
       });
       
-      console.log('Yesterday\'s inquiries after filtering:', filteredData.length);
+      console.log('Weekend inquiries fetched:', weekendInquiries.length);
       
       // Transform the data to match our Inquiry type
-      const transformedData: Inquiry[] = filteredData.map(enquiry => ({
+      const transformedData: Inquiry[] = weekendInquiries.map(enquiry => ({
         id: enquiry.id,
         clientName: enquiry["Client Name"] || 'Unknown Client',
         mobile: enquiry.Mobile || '',
+        email: enquiry.Email || '',
         configuration: enquiry.Configuration || '',
-        description: enquiry.Remarks || '',
-        status: enquiry["Enquiry Progress"] || '',
+        description: enquiry.Remarks || enquiry["Last Remarks"] || '',
+        status: enquiry["Enquiry Progress"] || 'New',
         source: enquiry["Enquiry Source"] || 'Unknown',
         assignedEmployee: enquiry["Assigned To"] || '',
-        dateCreated: String(enquiry["Created Date"] || enquiry.created_at || ''),
+        dateCreated: String(enquiry["Created Date"] || enquiry.created_at || new Date().toISOString()),
+        budget: enquiry.Budget || '',
+        area: enquiry.Area || '',
         lastRemarks: enquiry["Last Remarks"] || '',
         nfd: enquiry.NFD || ''
       }));
       
-      console.log('Transformed yesterday\'s inquiries:', transformedData.length);
       setInquiries(transformedData);
       setFilteredInquiries(transformedData);
     } catch (error) {
-      console.error('Error fetching yesterday\'s inquiries:', error);
+      console.error('Error fetching weekend inquiries:', error);
     } finally {
       setIsLoading(false);
     }
@@ -107,6 +132,16 @@ export default function YesterdayInquiries() {
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
+  };
+
+  // Function to get day name
+  const getDayName = (dateString: string) => {
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-US', { weekday: 'long' });
+    } catch (error) {
+      return 'Unknown';
+    }
   };
 
   return (
@@ -119,12 +154,12 @@ export default function YesterdayInquiries() {
         <div className="relative py-12 px-8 text-white">
           <div className="flex flex-col md:flex-row md:items-center justify-between mb-6">
             <div>
-              <h1 className="text-3xl font-bold mb-2">Yesterday&apos;s Inquiries</h1>
+              <h1 className="text-3xl font-bold mb-2">Weekend Inquiries</h1>
               <div className="text-[#e5d0b1] text-lg font-semibold">
                 {inquiries.length} Inquiries
               </div>
               <p className="text-[#e5d0b1] max-w-2xl mt-2">
-                All inquiries that were scheduled for yesterday (previous day)
+                All inquiries created on weekends (Saturday and Sunday)
               </p>
             </div>
             <Link 
@@ -155,7 +190,7 @@ export default function YesterdayInquiries() {
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-bold flex items-center">
               <span className="inline-block w-1.5 h-5 bg-[#c69c6d] rounded-full mr-2"></span>
-              Yesterday&apos;s Inquiry List
+              Weekend Inquiry List
             </h2>
             <div className="flex items-center gap-2">
               <span className="text-sm text-gray-600 dark:text-gray-400">
@@ -179,7 +214,7 @@ export default function YesterdayInquiries() {
                   <th>Source</th>
                   <th>Assigned To</th>
                   <th>Progress</th>
-                  <th>Next Follow-up</th>
+                  <th>Day</th>
                   <th>Last Remarks</th>
                   <th>Created Date</th>
                 </tr>
@@ -235,12 +270,14 @@ export default function YesterdayInquiries() {
                         </div>
                       </td>
                       <td>
-                        {inquiry.nfd || '-'}
+                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/20 dark:text-amber-400">
+                          {getDayName(inquiry.dateCreated)}
+                        </div>
                       </td>
                       <td>
                         <div className="max-w-[200px]">
                           <div className="text-sm text-gray-600 dark:text-gray-400 truncate">
-                            {inquiry.lastRemarks || inquiry.description || 'No remarks yet'}
+                            {inquiry.lastRemarks || 'No remarks yet'}
                           </div>
                         </div>
                       </td>
@@ -256,8 +293,8 @@ export default function YesterdayInquiries() {
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
                         </svg>
-                        <h3 className="text-lg font-medium mb-1">No inquiries found for yesterday</h3>
-                        <p className="text-gray-500 dark:text-gray-400 mb-4">There were no inquiries scheduled for yesterday</p>
+                        <h3 className="text-lg font-medium mb-1">No weekend inquiries found</h3>
+                        <p className="text-gray-500 dark:text-gray-400 mb-4">There are no inquiries created on weekends</p>
                       </div>
                     </td>
                   </tr>

@@ -750,16 +750,8 @@ const CategoryCard = ({ title, count, icon, enquiries, colorClass }: {
   enquiries: Enquiry[];
   colorClass: string;
 }) => {
-  // Create a type that extends Enquiry with optional progressType
+  // Type that extends Enquiry with optional progressType is still needed for the view all link
   type EnquiryWithProgress = Enquiry & { progressType?: string };
-  
-  // Add debug logging for this component
-  console.log(`Rendering CategoryCard for "${title}" with ${count} enquiries:`, 
-    enquiries.map(e => ({ 
-      id: e.id, 
-      clientName: e.clientName, 
-      progressType: (e as EnquiryWithProgress).progressType 
-    })));
   
   // Convert title to category value for filtering
   const getCategoryValue = (title: string) => {
@@ -780,102 +772,35 @@ const CategoryCard = ({ title, count, icon, enquiries, colorClass }: {
     } else if (title === 'Yesterday') {
       // Link to the dedicated yesterday-inquiries page for Yesterday category
       return '/yesterday-inquiries';
+    } else if (title === 'Weekend') {
+      // Link to the dedicated weekend-inquiries page for Weekend category
+      return '/weekend-inquiries';
     }
     return `/enquiry/list?category=${getCategoryValue(title)}`;
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'new':
-        return 'bg-blue-100 text-blue-800';
-      case 'in_progress':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'completed':
-        return 'bg-green-100 text-green-800';
-      case 'cancelled':
-        return 'bg-red-100 text-red-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
-  
-  // Get progress type display and color
-  const getProgressTypeDisplay = (progressType: string) => {
-    if (!progressType) return null;
-    
-    let label = progressType.replace(/_/g, ' ');
-    label = label.charAt(0).toUpperCase() + label.slice(1);
-    
-    let colorClass = 'bg-purple-100 text-purple-800';
-    
-    if (progressType.includes('site_visit')) {
-      colorClass = 'bg-green-100 text-green-800';
-    } else if (progressType.includes('phone')) {
-      colorClass = 'bg-blue-100 text-blue-800';
-    } else if (progressType.includes('deal_done')) {
-      colorClass = 'bg-amber-100 text-amber-800';
-    }
-    
-    return { label, colorClass };
-  };
-
   return (
     <div className={`p-5 rounded-xl bg-gradient-to-br border transition-all hover:shadow-md ${colorClass}`}>
-      <div className="flex justify-between items-start mb-5">
+      <div className="flex justify-between items-center mb-4">
         <div className="flex flex-col">
           <div className="text-lg font-bold text-gray-800 dark:text-white">{title}</div>
-          <div className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">{count}</div>
+          <div className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white">{count}</div>
         </div>
-        <div className="h-10 w-10 rounded-full bg-white/70 dark:bg-gray-800/70 flex items-center justify-center text-[#c69c6d]">
+        <div className="h-14 w-14 rounded-full bg-white/70 dark:bg-gray-800/70 flex items-center justify-center text-[#c69c6d]">
           {icon}
         </div>
       </div>
       
-      {/* Inquiry list */}
-      <div>
-        {count > 0 ? (
-          <div className="space-y-3 mt-2 max-h-[250px] overflow-y-auto pr-1 custom-scrollbar">
-            {enquiries.slice(0, 5).map((enquiry, index) => (
-              <Link href={`/enquiry/${enquiry.id}/progress`} key={enquiry.id} className="block">
-                <div className="p-3 rounded-lg bg-white/50 dark:bg-gray-900/30 hover:bg-white/80 dark:hover:bg-gray-900/50 transition-colors">
-                  <div className="flex justify-between">
-                    <div className="text-sm font-medium text-gray-900 dark:text-white truncate max-w-[150px] sm:max-w-[180px]">
-                      {enquiry.clientName}
-                    </div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">
-                      {enquiry.source}
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap gap-1 mt-1.5">
-                    {(enquiry as EnquiryWithProgress).progressType ? (
-                      <div className={`text-xs px-2 py-0.5 rounded-full ${getProgressTypeDisplay((enquiry as EnquiryWithProgress).progressType!)?.colorClass}`}>
-                        {getProgressTypeDisplay((enquiry as EnquiryWithProgress).progressType!)?.label}
-                      </div>
-                    ) : (
-                      <div className={`text-xs px-2 py-0.5 rounded-full ${getStatusColor(enquiry.status)}`}>
-                        {enquiry.status.replace(/_/g, ' ')}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-6 px-3 rounded-lg bg-white/50 dark:bg-gray-900/30">
-            <div className="text-gray-500 dark:text-gray-400">No {title.toLowerCase()} inquiries</div>
-          </div>
-        )}
-      </div>
-      
-      {count > 0 && (
-        <div className="mt-4">
-          <Link 
-            href={getLink(title)}
-            className="w-full block text-center py-2.5 px-4 rounded-lg bg-white/70 dark:bg-gray-900/40 text-[#1a2e29] dark:text-white hover:bg-white/90 dark:hover:bg-gray-900/60 transition-colors text-sm font-medium"
-          >
-            View All {count > 5 ? `(${count})` : ''}
-          </Link>
+      {count > 0 ? (
+        <Link 
+          href={getLink(title)}
+          className="w-full block text-center py-3 px-4 rounded-lg bg-white/70 dark:bg-gray-900/40 text-[#1a2e29] dark:text-white hover:bg-white/90 dark:hover:bg-gray-900/60 transition-colors text-sm font-medium"
+        >
+          View All {count > 0 ? `(${count})` : ''}
+        </Link>
+      ) : (
+        <div className="text-center py-3 px-4 rounded-lg bg-white/50 dark:bg-gray-900/30">
+          <div className="text-gray-500 dark:text-gray-400">No {title.toLowerCase()} inquiries</div>
         </div>
       )}
     </div>
