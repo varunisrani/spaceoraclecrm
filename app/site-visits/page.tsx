@@ -9,6 +9,7 @@ interface SiteVisit {
   id: string;
   inquiryId: string;
   clientName: string;
+  mobile: string;
   scheduledDate: string;
   status: 'scheduled' | 'done' | 'cancelled';
   remarks: string;
@@ -45,6 +46,7 @@ export default function SiteVisitsPage() {
           id: enquiry.id,
           inquiryId: enquiry.id,
           clientName: enquiry["Client Name"] || 'Unknown Client',
+          mobile: enquiry["Mobile"] || 'N/A',
           scheduledDate: enquiry["NFD"] || new Date().toISOString(), // Using Next Follow-up Date as scheduled date
           status: enquiry["Enquiry Progress"]?.toLowerCase().includes('done') ? 'done' :
                  enquiry["Enquiry Progress"]?.toLowerCase().includes('cancelled') ? 'cancelled' : 'scheduled',

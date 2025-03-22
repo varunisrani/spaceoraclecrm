@@ -295,6 +295,7 @@ export default function Home() {
     try {
       // Get current date
       const today = new Date();
+      const todayFormatted = `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}/${today.getFullYear()}`;
       
       // Get date 1 day before (yesterday)
       const yesterday = new Date(today);
@@ -304,7 +305,25 @@ export default function Home() {
       // Parse yesterday's date for comparison
       const [yesterdayDay, yesterdayMonth, yesterdayYear] = yesterdayFormatted.split('/').map(Number);
       
-      // First, get inquiry IDs from the Inquiry_Progress table that have "deal_lost" progress type
+      // First, fetch all progress entries with date >= today to filter out later
+      const { data: progressEntries, error: progressError } = await supabase
+        .from('Inquiry_Progress')
+        .select('eid, date')
+        .gte('date', todayFormatted);
+      
+      if (progressError) {
+        console.error('Error fetching progress entries with future dates:', progressError);
+        throw progressError;
+      }
+      
+      // Create a Set of inquiry IDs that have progress entries with future dates
+      const inquiryIdsWithFutureProgress = new Set(
+        progressEntries.map(entry => entry.eid)
+      );
+      
+      console.log('Inquiries with progress entries scheduled today or later:', inquiryIdsWithFutureProgress.size);
+      
+      // Get inquiry IDs from the Inquiry_Progress table that have "deal_lost" progress type
       const { data: dealLostData, error: dealLostError } = await supabase
         .from('Inquiry_Progress')
         .select('eid')
@@ -333,7 +352,9 @@ export default function Home() {
 
       if (error) throw error;
       
-      // Filter enquiries where NFD is earlier than yesterday
+      // Filter enquiries where:
+      // 1. NFD is earlier than yesterday AND
+      // 2. The inquiry ID is NOT in the Set of IDs with future progress entries
       const filteredData = data.filter(enquiry => {
         if (!enquiry.NFD) return false;
         
@@ -344,11 +365,17 @@ export default function Home() {
         const nfdDate = new Date(year, month - 1, day); // month is 0-indexed in JavaScript
         const yesterdayDate = new Date(yesterdayYear, yesterdayMonth - 1, yesterdayDay);
         
-        // Return true if the NFD date is before yesterday
-        return nfdDate < yesterdayDate;
+        // First condition: NFD date is before yesterday
+        const isOverdue = nfdDate < yesterdayDate;
+        
+        // Second condition: Check if this inquiry ID is NOT in the Set of IDs with future progress entries
+        const hasNoFutureProgress = !inquiryIdsWithFutureProgress.has(enquiry.id);
+        
+        // Both conditions must be true
+        return isOverdue && hasNoFutureProgress;
       });
       
-      console.log('Due enquiries (older than yesterday):', filteredData.length);
+      console.log('Due enquiries (older than yesterday AND no future progress):', filteredData.length);
       
       // Transform the data to match the Enquiry type
       const transformedData: Enquiry[] = filteredData.map(enquiry => ({

@@ -11,6 +11,7 @@ interface SiteVisit {
   remark: string;
   date: string;
   clientName: string;
+  mobile: string;
   created_at: string;
 }
 
@@ -33,7 +34,7 @@ export default function TodaysSiteVisitsPage() {
       // Query Inquiry_Progress table for site visits scheduled today
       const { data, error } = await supabase
         .from('Inquiry_Progress')
-        .select('*, enquiries:eid("Client Name")') // Join with enquiries table to get client name
+        .select('*, enquiries:eid("Client Name", "Mobile")') // Join with enquiries table to get client name and mobile
         .eq('progress_type', 'site_visit_schedule')
         .eq('date', todayDate);
 
@@ -47,6 +48,7 @@ export default function TodaysSiteVisitsPage() {
         remark: item.remark || '',
         date: item.date || '',
         clientName: item.enquiries?.["Client Name"] || 'Unknown Client',
+        mobile: item.enquiries?.["Mobile"] || 'N/A',
         created_at: item.created_at || new Date().toISOString()
       }));
 
@@ -125,6 +127,7 @@ export default function TodaysSiteVisitsPage() {
                             </div>
                             <div>
                               <div className="font-medium text-gray-900">{visit.clientName}</div>
+                              <div className="text-xs text-gray-500">{visit.mobile}</div>
                             </div>
                           </div>
                         </td>

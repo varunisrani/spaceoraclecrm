@@ -5,6 +5,7 @@ interface SiteVisit {
   id: string;
   inquiryId: string;
   clientName: string;
+  mobile: string;
   scheduledDate: string;
   status: 'scheduled' | 'done' | 'cancelled';
   remarks: string;
@@ -63,7 +64,7 @@ const SiteVisitList: React.FC<SiteVisitListProps> = ({
                   <div>
                     <div className={`font-medium text-sm sm:text-base ${getNameColor(visit.status)}`}>{visit.clientName}</div>
                     <div className="text-xs text-gray-500 dark:text-gray-400">
-                      {new Date(visit.scheduledDate).toLocaleDateString()}
+                      {visit.mobile || 'N/A'}
                     </div>
                   </div>
                 </div>
