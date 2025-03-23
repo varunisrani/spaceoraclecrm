@@ -137,11 +137,11 @@ export default function EnquiryList() {
         }
       }
       
-      // Apply category filter for 'due' - dates earlier than yesterday
+      // Apply category filter for 'due' - dates earlier than today
       if (category === 'due') {
-        console.log('Filtering for due category (dates earlier than yesterday)');
+        console.log('Applying simplified due filtering based on NFD');
         
-        // We'll fetch all and filter client-side for dates before yesterday
+        // We'll fetch all and filter client-side for dates before today
         // (Since Supabase doesn't support date comparisons directly with DD/MM/YYYY format)
       }
 
@@ -225,26 +225,37 @@ export default function EnquiryList() {
         let filteredData = data;
         
         if (category === 'due') {
-          // Filter for dates before yesterday
+          console.log('Applying simplified due filtering based on NFD');
+          
+          // Get current date
+          const now = new Date();
+          const todayFormatted = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
+          
+          // Parse today's date for comparison
+          const [todayDay, todayMonth, todayYear] = todayFormatted.split('/').map(Number);
+          
+          // Create Date object for today (with time set to midnight)
+          const todayDate = new Date(todayYear, todayMonth - 1, todayDay);
+          
+          // Filter inquiries with NFD earlier than today
           filteredData = data.filter(enquiry => {
+            // Skip if no NFD
             if (!enquiry.NFD) return false;
             
             // Parse the NFD date (DD/MM/YYYY)
             const [day, month, year] = enquiry.NFD.split('/').map(Number);
             
-            // Create Date objects for comparison (month is 0-indexed in JavaScript)
-            const nfdDate = new Date(year, month - 1, day);
-            const todayDate = new Date(
-              today.getFullYear(),
-              today.getMonth(),
-              today.getDate()
-            );
+            // Check if this is a valid date
+            if (isNaN(day) || isNaN(month) || isNaN(year)) return false;
             
-            // Return true if the NFD date is before yesterday
+            // Create Date object for NFD (with time set to midnight)
+            const nfdDate = new Date(year, month - 1, day);
+            
+            // The only condition: NFD is earlier than today
             return nfdDate < todayDate;
           });
           
-          console.log('Due enquiries after filtering (dates before yesterday):', filteredData.length);
+          console.log('Due inquiries after simplified filtering:', filteredData.length);
         }
         
         setEnquiries(data);

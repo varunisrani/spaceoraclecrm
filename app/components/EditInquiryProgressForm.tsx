@@ -75,6 +75,22 @@ export default function EditInquiryProgressForm({
           .eq('id', progressId);
 
         if (error) throw error;
+        
+        // Also update NFD in the inquiries table with the same date
+        const { error: updateError } = await supabase
+          .from('enquiries')
+          .update({
+            "NFD": formData.date,
+            "Last Remarks": formData.remarks
+          })
+          .eq('id', eid);
+
+        if (updateError) {
+          console.error('Error updating NFD in inquiries table:', updateError);
+          throw updateError;
+        }
+
+        console.log('Updated NFD in inquiries table to:', formData.date);
       }
 
       // Call success callback

@@ -79,66 +79,68 @@ export default function DueInquiries() {
     try {
       setIsLoading(true);
       
-      console.log('Fetching due inquiries...');
+      console.log('Fetching due inquiries using simplified logic...');
       
       // Get current date
       const today = new Date();
       const todayFormatted = `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}/${today.getFullYear()}`;
       
-      // Get date 1 day before (yesterday)
-      const yesterday = new Date(today);
-      yesterday.setDate(today.getDate() - 1);
-      const yesterdayFormatted = `${String(yesterday.getDate()).padStart(2, '0')}/${String(yesterday.getMonth() + 1).padStart(2, '0')}/${yesterday.getFullYear()}`;
+      // Parse today's date for comparison
+      const [todayDay, todayMonth, todayYear] = todayFormatted.split('/').map(Number);
       
-      // Parse yesterday's date for comparison
-      const [yesterdayDay, yesterdayMonth, yesterdayYear] = yesterdayFormatted.split('/').map(Number);
+      // Create Date object for today (with time set to midnight)
+      const todayDate = new Date(todayYear, todayMonth - 1, todayDay);
       
-      // First, fetch all progress entries with date >= today to filter out later
-      const { data: progressEntries, error: progressError } = await supabase
+      // Get inquiry IDs from the Inquiry_Progress table that have "deal_lost" progress type
+      const { data: dealLostData, error: dealLostError } = await supabase
         .from('Inquiry_Progress')
-        .select('eid, date')
-        .gte('date', todayFormatted);
+        .select('eid')
+        .eq('progress_type', 'deal_lost');
+        
+      if (dealLostError) {
+        console.error('Error fetching deal_lost entries from Inquiry_Progress table:', dealLostError);
+        throw dealLostError;
+      }
       
-      if (progressError) throw progressError;
-      
-      // Create a Set of inquiry IDs that have progress entries with future dates
-      const inquiryIdsWithFutureProgress = new Set(
-        progressEntries.map(entry => entry.eid)
-      );
-      
-      console.log('Inquiries with progress entries scheduled today or later:', inquiryIdsWithFutureProgress.size);
+      // Extract the eids (inquiry ids) that have deal_lost progress entries
+      const dealLostInquiryIds = new Set(dealLostData.map(item => item.eid));
+      console.log('Inquiries with deal_lost progress to exclude from due inquiries:', dealLostInquiryIds.size);
       
       // Fetch all enquiries
-      const { data, error } = await supabase
+      let enquiriesQuery = supabase
         .from('enquiries')
         .select('*');
+        
+      // Exclude inquiries with deal_lost progress if there are any
+      if (dealLostInquiryIds.size > 0) {
+        const dealLostArray = Array.from(dealLostInquiryIds);
+        enquiriesQuery = enquiriesQuery.not('id', 'in', `(${dealLostArray.join(',')})`);
+      }
+      
+      const { data, error } = await enquiriesQuery;
 
       if (error) throw error;
       
-      // Filter enquiries where:
-      // 1. NFD is earlier than yesterday AND
-      // 2. The inquiry ID is NOT in the Set of IDs with future progress entries
+      // Filter inquiries using ONLY the NFD logic:
+      // NFD is earlier than today (not including today)
       const filteredData = data.filter(enquiry => {
+        // Skip if no NFD
         if (!enquiry.NFD) return false;
         
         // Parse the NFD date
         const [day, month, year] = enquiry.NFD.split('/').map(Number);
         
-        // Create Date objects for comparison
-        const nfdDate = new Date(year, month - 1, day); // month is 0-indexed in JavaScript
-        const yesterdayDate = new Date(yesterdayYear, yesterdayMonth - 1, yesterdayDay);
+        // Check if this is a valid date
+        if (isNaN(day) || isNaN(month) || isNaN(year)) return false;
         
-        // First condition: NFD date is before yesterday
-        const isOverdue = nfdDate < yesterdayDate;
+        // Create Date object for NFD (with time set to midnight)
+        const nfdDate = new Date(year, month - 1, day);
         
-        // Second condition: Check if this inquiry ID is NOT in the Set of IDs with future progress entries
-        const hasNoFutureProgress = !inquiryIdsWithFutureProgress.has(enquiry.id);
-        
-        // Both conditions must be true
-        return isOverdue && hasNoFutureProgress;
+        // The only condition: NFD is earlier than today
+        return nfdDate < todayDate;
       });
       
-      console.log('Due inquiries (older than yesterday AND no future progress):', filteredData.length);
+      console.log('Due inquiries (NFD earlier than today):', filteredData.length);
       
       // Ensure data is treated as EnquiryRecord[]
       const typedData = filteredData as EnquiryRecord[];

@@ -46,6 +46,22 @@ export default function InquiryProgressForm({ inquiryId, onClose, onSuccess }: I
         throw progressError;
       }
 
+      // Update NFD in the inquiries table with the same date
+      const { error: updateError } = await supabase
+        .from('enquiries')
+        .update({
+          "NFD": formData.date,
+          "Last Remarks": formData.remarks
+        })
+        .eq('id', inquiryId);
+
+      if (updateError) {
+        console.error('Error updating NFD in inquiries table:', updateError);
+        throw updateError;
+      }
+
+      console.log('Updated NFD in inquiries table to:', formData.date);
+
       // If we get here, everything was successful
       console.log('Progress saved successfully:', progressData);
 
