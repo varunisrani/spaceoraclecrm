@@ -76,21 +76,33 @@ export default function EditInquiryProgressForm({
 
         if (error) throw error;
         
-        // Also update NFD in the inquiries table with the same date
+        // Format progress type for display (convert snake_case to Title Case)
+        const formattedProgressType = formData.progressType
+          .split('_')
+          .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+          .join(' ');
+        
+        // Prepare update data for the enquiries table
+        const updateData: { [key: string]: string } = {
+          "NFD": formData.date,
+          "Last Remarks": formData.remarks,
+          "Enquiry Progress": formattedProgressType // Also update the Enquiry Progress field
+        };
+        
+        console.log('Updating enquiry with data:', updateData);
+        
+        // Update the enquiries table with the same date and progress type
         const { error: updateError } = await supabase
           .from('enquiries')
-          .update({
-            "NFD": formData.date,
-            "Last Remarks": formData.remarks
-          })
+          .update(updateData)
           .eq('id', eid);
 
         if (updateError) {
-          console.error('Error updating NFD in inquiries table:', updateError);
+          console.error('Error updating enquiry data:', updateError);
           throw updateError;
         }
 
-        console.log('Updated NFD in inquiries table to:', formData.date);
+        console.log('Updated enquiry successfully with progress type:', formattedProgressType);
       }
 
       // Call success callback
