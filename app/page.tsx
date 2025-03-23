@@ -131,13 +131,30 @@ export default function Home() {
       const today = new Date();
       const formattedDate = `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}/${today.getFullYear()}`;
       
-      const { count: siteVisitsCount, error: siteVisitsError } = await supabase
+      // Updated site visits logic to match Today's Site Visits page
+      const { data: siteVisitData, error: siteVisitsError } = await supabase
         .from('Inquiry_Progress')
-        .select('*', { count: 'exact', head: true })
+        .select('*')
         .eq('progress_type', 'site_visit_schedule')
-        .eq('date', formattedDate);
+        .eq('date', formattedDate)
+        .order('created_at', { ascending: false }); // Get newest entries first
 
       if (siteVisitsError) throw siteVisitsError;
+
+      // Create a Map to store the latest entry for each unique eid
+      const latestVisitMap = new Map<string, any>();
+      
+      // Loop through all entries and keep only the latest one for each eid
+      (siteVisitData || []).forEach(item => {
+        if (!latestVisitMap.has(item.eid)) {
+          latestVisitMap.set(item.eid, item);
+        }
+      });
+      
+      console.log(`Found ${siteVisitData?.length || 0} total site visits, filtered to ${latestVisitMap.size} unique inquiries`);
+      
+      // Use the size of the Map as the count of unique site visits
+      const uniqueSiteVisitsCount = latestVisitMap.size;
 
       // Get total deals done count from Inquiry_Progress table 
       // by counting unique inquiry IDs (eids) that have 'deal_done' progress
@@ -161,7 +178,7 @@ export default function Home() {
         ...prev,
         totalEnquiries: totalCount || 0,
         newEnquiries: newCount || 0,
-        pendingSiteVisits: siteVisitsCount || 0,
+        pendingSiteVisits: uniqueSiteVisitsCount || 0,
         totalSales: dealsDoneCount || 0
       }));
 
@@ -218,11 +235,24 @@ export default function Home() {
         .from('Inquiry_Progress')
         .select('*, enquiries:eid(*)')
         .eq('date', formattedDate)
-        .not('progress_type', 'eq', 'deal_lost'); // Exclude deal_lost progress entries
+        .not('progress_type', 'eq', 'deal_lost') // Exclude deal_lost progress entries
+        .order('created_at', { ascending: false }); // Order by created_at descending to get newest first
 
       if (progressError) throw progressError;
 
       console.log('Inquiry_Progress entries with date = today (excluding deal_lost):', progressData?.length || 0);
+      
+      // Create a Map to store the latest entry for each unique eid
+      const latestProgressMap = new Map<string, any>();
+      
+      // Loop through all progress entries and keep only the latest one for each eid
+      (progressData || []).forEach(item => {
+        if (!latestProgressMap.has(item.eid) && item.enquiries) {
+          latestProgressMap.set(item.eid, item);
+        }
+      });
+      
+      console.log(`Filtered progress entries from ${progressData?.length || 0} to ${latestProgressMap.size} unique inquiries`);
       
       // Filter out completed or cancelled inquiries from NFD data
       const filteredNfdData = nfdData.filter(enquiry => {
@@ -248,8 +278,7 @@ export default function Home() {
       }));
 
       // Transform the Progress data to match the Enquiry type (only if it has a related enquiry)
-      const progressTransformedData: Enquiry[] = progressData
-        .filter(progress => progress.enquiries) // Only include progress entries with valid enquiry relation
+      const progressTransformedData: Enquiry[] = Array.from(latestProgressMap.values())
         .map(progress => {
           const enquiry = progress.enquiries;
           return {
@@ -584,9 +613,13 @@ export default function Home() {
           <h1 className="text-4xl md:text-5xl font-bold text-white mb-3">
             Welcome to <span className="text-[#c69c6d]">Space Oracle CRM</span>
           </h1>
-          <p className="text-[#e5d0b1] text-lg md:text-xl max-w-3xl mx-auto mb-10">
-            The premium real estate management platform where exceptional spaces meet exceptional service
-          </p>
+          <div className="flex items-center justify-center gap-3 mb-10">
+            <div className="h-[1px] w-12 bg-[#c69c6d]/50"></div>
+            <p className="text-[#e5d0b1] text-lg md:text-xl italic tracking-wide animate-pulse-subtle">
+              Delivering Spaces Where Dreams Thrive
+            </p>
+            <div className="h-[1px] w-12 bg-[#c69c6d]/50"></div>
+          </div>
           
           <div className="max-w-2xl mx-auto">
             <SearchBar 

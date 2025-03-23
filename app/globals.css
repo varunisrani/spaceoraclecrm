@@ -115,6 +115,16 @@ h1, h2, h3, h4, h5, h6 {
   to { transform: scale(1); opacity: 1; }
 }
 
+.animate-pulse-subtle {
+  animation: pulseSubtle 4s ease-in-out infinite;
+}
+
+@keyframes pulseSubtle {
+  0% { opacity: 0.85; }
+  50% { opacity: 1; }
+  100% { opacity: 0.85; }
+}
+
 /* Glassmorphism effects */
 .glass-card {
   @apply bg-white/70 dark:bg-[#111f1c]/70 backdrop-blur-md border border-white/20 dark:border-white/10;

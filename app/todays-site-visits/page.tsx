@@ -36,12 +36,25 @@ export default function TodaysSiteVisitsPage() {
         .from('Inquiry_Progress')
         .select('*, enquiries:eid("Client Name", "Mobile")') // Join with enquiries table to get client name and mobile
         .eq('progress_type', 'site_visit_schedule')
-        .eq('date', todayDate);
+        .eq('date', todayDate)
+        .order('created_at', { ascending: false }); // Get newest entries first
 
       if (error) throw error;
 
-      // Transform the data into SiteVisit format
-      const visits: SiteVisit[] = (data || []).map(item => ({
+      // Create a Map to store the latest entry for each unique eid
+      const latestVisitMap = new Map<string, any>();
+      
+      // Loop through all entries and keep only the latest one for each eid
+      (data || []).forEach(item => {
+        if (!latestVisitMap.has(item.eid)) {
+          latestVisitMap.set(item.eid, item);
+        }
+      });
+      
+      console.log(`Found ${data?.length || 0} total site visits, filtered to ${latestVisitMap.size} unique inquiries`);
+      
+      // Transform the data into SiteVisit format, using only the latest entries
+      const visits: SiteVisit[] = Array.from(latestVisitMap.values()).map(item => ({
         id: item.id || '',
         eid: item.eid || '',
         progress_type: item.progress_type || '',
@@ -158,6 +171,24 @@ export default function TodaysSiteVisitsPage() {
                         </td>
                         <td className="text-right">
                           <div className="flex justify-end gap-2">
+                            <Link
+                              href={`/enquiry/${visit.eid}/edit`}
+                              className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors text-gray-600 dark:text-gray-400"
+                              title="Edit Inquiry"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                              </svg>
+                            </Link>
+                            <Link
+                              href={`/enquiry/${visit.eid}/progress`}
+                              className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors text-gray-600 dark:text-gray-400"
+                              title="Add Progress"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clipRule="evenodd" />
+                              </svg>
+                            </Link>
                             <Link
                               href={`/enquiry/${visit.eid}/progress`}
                               className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors text-gray-600 dark:text-gray-400"
