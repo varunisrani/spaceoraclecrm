@@ -7,6 +7,7 @@ import { useInitializeData } from './utils/initializeData';
 import SearchBar from './components/SearchBar';
 import Link from 'next/link';
 import { supabase } from './utils/supabase';
+import { useAuth } from './context/AuthContext';
 
 // Commented out as it's not currently used
 // interface EnquiryCount {
@@ -30,6 +31,7 @@ import { supabase } from './utils/supabase';
 // );
 
 export default function Home() {
+  const { user, loading } = useAuth();
   useInitializeData();
   
   const [stats, setStats] = useState({
@@ -55,6 +57,36 @@ export default function Home() {
 
   const [isLoading, setIsLoading] = useState(true);
   
+  // Helper function to format date consistently
+  const formatDate = (date: Date): string => {
+    return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
+  };
+
+  // Helper function to compare dates (ignoring time)
+  const isSameDay = (date1: Date, date2: Date): boolean => {
+    return (
+      date1.getDate() === date2.getDate() &&
+      date1.getMonth() === date2.getMonth() &&
+      date1.getFullYear() === date2.getFullYear()
+    );
+  };
+
+  // Helper function to parse DD/MM/YYYY to Date
+  const parseDate = (dateStr: string): Date | null => {
+    if (!dateStr || typeof dateStr !== 'string') return null;
+    
+    const parts = dateStr.split('/');
+    if (parts.length !== 3) return null;
+    
+    const day = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1; // JavaScript months are 0-based
+    const year = parseInt(parts[2], 10);
+    
+    if (isNaN(day) || isNaN(month) || isNaN(year)) return null;
+    
+    return new Date(year, month, day);
+  };
+
   // Function to fetch enquiry counts from Supabase
   const fetchEnquiryCounts = async () => {
     try {
@@ -129,7 +161,7 @@ export default function Home() {
 
       // Get today's site visits from Inquiry_Progress table
       const today = new Date();
-      const formattedDate = `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}/${today.getFullYear()}`;
+      const formattedDate = formatDate(today);
       
       // Updated site visits logic to match Today's Site Visits page
       const { data: siteVisitData, error: siteVisitsError } = await supabase
@@ -192,127 +224,35 @@ export default function Home() {
     try {
       // Get today's date in DD/MM/YYYY format
       const today = new Date();
-      const formattedDate = `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}/${today.getFullYear()}`;
+      const formattedDate = formatDate(today);
       
       console.log('Fetching today\'s data with date:', formattedDate);
       
-      // First, get inquiry IDs from the Inquiry_Progress table that have "deal_lost" progress type
-      const { data: dealLostData, error: dealLostError } = await supabase
-        .from('Inquiry_Progress')
-        .select('eid')
-        .eq('progress_type', 'deal_lost');
-        
-      if (dealLostError) {
-        console.error('Error fetching deal_lost entries from Inquiry_Progress table:', dealLostError);
-        throw dealLostError;
-      }
-      
-      // Extract the eids (inquiry ids) that have deal_lost progress entries
-      const dealLostInquiryIds = dealLostData.map(item => item.eid);
-      console.log('Inquiries with deal_lost progress to exclude from today\'s inquiries:', dealLostInquiryIds.length);
-      
       // PART 1: Fetch from enquiries table where NFD = today
-      console.log('Fetching from enquiries table where NFD =', formattedDate);
-      let nfdQuery = supabase
+      const { data: nfdData, error: nfdError } = await supabase
         .from('enquiries')
         .select('*')
         .eq('NFD', formattedDate);
-        
-      // Exclude inquiries with deal_lost progress if there are any
-      if (dealLostInquiryIds.length > 0) {
-        nfdQuery = nfdQuery.not('id', 'in', `(${dealLostInquiryIds.join(',')})`);
-      }
-      
-      const { data: nfdData, error: nfdError } = await nfdQuery;
 
       if (nfdError) throw nfdError;
 
-      console.log('Enquiries with NFD = today (excluding deal_lost):', nfdData?.length || 0);
-      
-      // PART 2: Fetch from Inquiry_Progress table where date = today
-      console.log('Fetching from Inquiry_Progress table where date =', formattedDate);
-      const { data: progressData, error: progressError } = await supabase
-        .from('Inquiry_Progress')
-        .select('*, enquiries:eid(*)')
-        .eq('date', formattedDate)
-        .not('progress_type', 'eq', 'deal_lost') // Exclude deal_lost progress entries
-        .order('created_at', { ascending: false }); // Order by created_at descending to get newest first
-
-      if (progressError) throw progressError;
-
-      console.log('Inquiry_Progress entries with date = today (excluding deal_lost):', progressData?.length || 0);
-      
-      // Create a Map to store the latest entry for each unique eid
-      const latestProgressMap = new Map<string, any>();
-      
-      // Loop through all progress entries and keep only the latest one for each eid
-      (progressData || []).forEach(item => {
-        if (!latestProgressMap.has(item.eid) && item.enquiries) {
-          latestProgressMap.set(item.eid, item);
-        }
-      });
-      
-      console.log(`Filtered progress entries from ${progressData?.length || 0} to ${latestProgressMap.size} unique inquiries`);
-      
-      // Filter out completed or cancelled inquiries from NFD data
-      const filteredNfdData = nfdData.filter(enquiry => {
-        const status = (enquiry["Enquiry Progress"] || '').toLowerCase();
-        return !status.includes('done') && !status.includes('cancelled');
-      });
-      
-      console.log('NFD enquiries after status filtering:', filteredNfdData.length);
+      console.log('Enquiries with NFD = today:', nfdData?.length || 0);
       
       // Transform the NFD data to match the Enquiry type
-      const nfdTransformedData: Enquiry[] = filteredNfdData.map(enquiry => ({
+      const nfdTransformedData: Enquiry[] = (nfdData || []).map(enquiry => ({
         id: enquiry.id,
         clientName: enquiry["Client Name"] || 'Unknown Client',
         mobile: enquiry.Mobile || '',
         configuration: enquiry.Configuration || '',
         description: enquiry["Last Remarks"] || '',
-        status: enquiry["Enquiry Progress"]?.toLowerCase().includes('done') ? 'inactive' :
-                enquiry["Enquiry Progress"]?.toLowerCase().includes('cancelled') ? 'inactive' : 'active',
+        status: enquiry["Enquiry Progress"]?.toLowerCase() || 'active',
         source: (enquiry["Enquiry Source"] || 'REF') as InquirySource,
         assignedEmployee: enquiry["Assigned To"] || '',
         dateCreated: enquiry["Created Date"] || new Date().toISOString(),
         category: 'today'
       }));
 
-      // Transform the Progress data to match the Enquiry type (only if it has a related enquiry)
-      const progressTransformedData: Enquiry[] = Array.from(latestProgressMap.values())
-        .map(progress => {
-          const enquiry = progress.enquiries;
-          return {
-            id: enquiry.id,
-            clientName: enquiry["Client Name"] || 'Unknown Client',
-            mobile: enquiry.Mobile || '',
-            configuration: enquiry.Configuration || '',
-            description: progress.remark || enquiry["Last Remarks"] || '',
-            status: enquiry["Enquiry Progress"]?.toLowerCase().includes('done') ? 'inactive' :
-                    enquiry["Enquiry Progress"]?.toLowerCase().includes('cancelled') ? 'inactive' : 'active',
-            source: (enquiry["Enquiry Source"] || 'REF') as InquirySource,
-            assignedEmployee: enquiry["Assigned To"] || '',
-            dateCreated: enquiry["Created Date"] || new Date().toISOString(),
-            category: 'today',
-            progressType: progress.progress_type,
-            progressId: progress.id
-          };
-        });
-      
-      console.log('Transformed progress data entries:', progressTransformedData.length);
-      
-      // Combine both data sources, avoiding duplicates (by id)
-      const allEnquiries = [...nfdTransformedData];
-      
-      // Add progress entries, but avoid duplicates
-      for (const progressEnquiry of progressTransformedData) {
-        if (!allEnquiries.some(e => e.id === progressEnquiry.id)) {
-          allEnquiries.push(progressEnquiry);
-        }
-      }
-      
-      console.log('Total combined today\'s enquiries:', allEnquiries.length);
-      
-      return allEnquiries;
+      return nfdTransformedData;
     } catch (error) {
       console.error('Error fetching today\'s enquiries:', error);
       return [];
@@ -324,61 +264,30 @@ export default function Home() {
     try {
       // Get current date
       const today = new Date();
-      const todayFormatted = `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}/${today.getFullYear()}`;
+      today.setHours(0, 0, 0, 0); // Set to start of day for comparison
       
-      // Parse today's date for comparison
-      const [todayDay, todayMonth, todayYear] = todayFormatted.split('/').map(Number);
+      console.log('Fetching due inquiries (before today)');
       
-      // Create Date object for today (with time set to midnight)
-      const todayDate = new Date(todayYear, todayMonth - 1, todayDay);
-      
-      // Get inquiry IDs from the Inquiry_Progress table that have "deal_lost" progress type
-      const { data: dealLostData, error: dealLostError } = await supabase
-        .from('Inquiry_Progress')
-        .select('eid')
-        .eq('progress_type', 'deal_lost');
-        
-      if (dealLostError) {
-        console.error('Error fetching deal_lost entries from Inquiry_Progress table:', dealLostError);
-        throw dealLostError;
-      }
-      
-      // Extract the eids (inquiry ids) that have deal_lost progress entries
-      const dealLostInquiryIds = new Set(dealLostData.map(item => item.eid));
-      console.log('Inquiries with deal_lost progress to exclude from due inquiries:', dealLostInquiryIds.size);
-      
-      // Fetch all enquiries, excluding those with deal_lost progress
-      let enquiriesQuery = supabase
+      // Fetch all enquiries
+      const { data, error } = await supabase
         .from('enquiries')
         .select('*');
-        
-      // Exclude inquiries with deal_lost progress if there are any
-      if (dealLostInquiryIds.size > 0) {
-        const dealLostArray = Array.from(dealLostInquiryIds);
-        enquiriesQuery = enquiriesQuery.not('id', 'in', `(${dealLostArray.join(',')})`);
-      }
-      
-      const { data, error } = await enquiriesQuery;
 
       if (error) throw error;
       
-      // Filter inquiries using ONLY the NFD logic:
-      // NFD is earlier than today (not including today)
-      const filteredData = data.filter(enquiry => {
+      // Filter inquiries where NFD is earlier than today
+      const filteredData = (data || []).filter(enquiry => {
         // Skip if no NFD
         if (!enquiry.NFD) return false;
         
         // Parse the NFD date
-        const [day, month, year] = enquiry.NFD.split('/').map(Number);
+        const nfdDate = parseDate(enquiry.NFD);
         
-        // Check if this is a valid date
-        if (isNaN(day) || isNaN(month) || isNaN(year)) return false;
-        
-        // Create Date object for NFD (with time set to midnight)
-        const nfdDate = new Date(year, month - 1, day);
+        // If can't parse or date is invalid, skip
+        if (!nfdDate) return false;
         
         // The only condition: NFD is earlier than today
-        return nfdDate < todayDate;
+        return nfdDate < today;
       });
       
       console.log('Due enquiries (NFD earlier than today):', filteredData.length);
@@ -390,8 +299,7 @@ export default function Home() {
         mobile: enquiry.Mobile || '',
         configuration: enquiry.Configuration || '',
         description: enquiry["Last Remarks"] || '',
-        status: enquiry["Enquiry Progress"]?.toLowerCase().includes('done') ? 'inactive' :
-                enquiry["Enquiry Progress"]?.toLowerCase().includes('cancelled') ? 'inactive' : 'active',
+        status: enquiry["Enquiry Progress"]?.toLowerCase() || 'active',
         source: (enquiry["Enquiry Source"] || 'REF') as InquirySource,
         assignedEmployee: enquiry["Assigned To"] || '',
         dateCreated: enquiry["Created Date"] || new Date().toISOString(),
@@ -408,55 +316,32 @@ export default function Home() {
   // Function to fetch yesterday's enquiries from Supabase
   const fetchYesterdaysEnquiries = async () => {
     try {
-      // Get current date
-      const today = new Date();
-      
       // Get yesterday's date
+      const today = new Date();
       const yesterday = new Date(today);
       yesterday.setDate(today.getDate() - 1);
-      const yesterdayFormatted = `${String(yesterday.getDate()).padStart(2, '0')}/${String(yesterday.getMonth() + 1).padStart(2, '0')}/${yesterday.getFullYear()}`;
+      const yesterdayFormatted = formatDate(yesterday);
       
-      // First, get inquiry IDs from the Inquiry_Progress table that have "deal_lost" progress type
-      const { data: dealLostData, error: dealLostError } = await supabase
-        .from('Inquiry_Progress')
-        .select('eid')
-        .eq('progress_type', 'deal_lost');
-        
-      if (dealLostError) {
-        console.error('Error fetching deal_lost entries from Inquiry_Progress table:', dealLostError);
-        throw dealLostError;
-      }
+      console.log('Fetching yesterday\'s data with date:', yesterdayFormatted);
       
-      // Extract the eids (inquiry ids) that have deal_lost progress entries
-      const dealLostInquiryIds = dealLostData.map(item => item.eid);
-      console.log('Inquiries with deal_lost progress to exclude from yesterday\'s inquiries:', dealLostInquiryIds.length);
-      
-      // Fetch enquiries where NFD is yesterday, excluding those with deal_lost progress
-      let enquiriesQuery = supabase
+      // Fetch enquiries where NFD is yesterday
+      const { data, error } = await supabase
         .from('enquiries')
         .select('*')
         .eq('NFD', yesterdayFormatted);
-        
-      // Exclude inquiries with deal_lost progress if there are any
-      if (dealLostInquiryIds.length > 0) {
-        enquiriesQuery = enquiriesQuery.not('id', 'in', `(${dealLostInquiryIds.join(',')})`);
-      }
-      
-      const { data, error } = await enquiriesQuery;
 
       if (error) throw error;
       
-      console.log('Yesterday\'s enquiries (excluding deal_lost):', data.length);
+      console.log('Yesterday\'s enquiries found:', data?.length || 0);
       
       // Transform the data to match the Enquiry type
-      const transformedData: Enquiry[] = data.map(enquiry => ({
+      const transformedData: Enquiry[] = (data || []).map(enquiry => ({
         id: enquiry.id,
         clientName: enquiry["Client Name"] || 'Unknown Client',
         mobile: enquiry.Mobile || '',
         configuration: enquiry.Configuration || '',
         description: enquiry["Last Remarks"] || '',
-        status: enquiry["Enquiry Progress"]?.toLowerCase().includes('done') ? 'inactive' :
-                enquiry["Enquiry Progress"]?.toLowerCase().includes('cancelled') ? 'inactive' : 'active',
+        status: enquiry["Enquiry Progress"]?.toLowerCase() || 'active',
         source: (enquiry["Enquiry Source"] || 'REF') as InquirySource,
         assignedEmployee: enquiry["Assigned To"] || '',
         dateCreated: enquiry["Created Date"] || new Date().toISOString(),
@@ -470,121 +355,110 @@ export default function Home() {
     }
   };
 
-  // Load data when component mounts
+  // Only run the data fetching if we're authenticated
   useEffect(() => {
-    fetchEnquiryCounts();
-  }, []);
-
-  // Load data from localStorage and Supabase
-  useEffect(() => {
-    const loadData = async () => {
-      try {
+    if (user && !loading) {
+      const loadData = async () => {
         setIsLoading(true);
-        console.log('Starting to load dashboard data...');
-        
-        // Get new inquiries from Supabase using the same logic that excludes inquiries with progress entries
-        console.log('Fetching new inquiries...');
-        
-        // First, get all inquiry IDs from the Inquiry_Progress table
-        const { data: progressData, error: progressError } = await supabase
-          .from('Inquiry_Progress')
-          .select('eid');
+        try {
+          // Fetch inquiry counts for the stats cards
+          await fetchEnquiryCounts();
           
-        if (progressError) {
-          console.error('Error fetching from Inquiry_Progress table:', progressError);
-          throw progressError;
-        }
-        
-        // Extract the eids (inquiry ids) that have progress entries
-        const inquiryIdsWithProgress = progressData.map(item => item.eid);
-        console.log('Inquiries with progress entries:', inquiryIdsWithProgress.length);
-        
-        // Query to get new inquiries EXCLUDING any that have matching IDs in Inquiry_Progress table
-        let newInquiriesQuery = supabase
-          .from('enquiries')
-          .select('*')
-          .eq('Enquiry Progress', 'New');
+          // Fetch all inquiry categories in parallel
+          const [todayInquiries, dueInquiries, yesterdayInquiries, newInquiries] = await Promise.all([
+            fetchTodaysEnquiries(),
+            fetchDueEnquiries(),
+            fetchYesterdaysEnquiries(),
+            // Fetch new inquiries
+            (async () => {
+              try {
+                // First, get inquiry IDs from the Inquiry_Progress table
+                const { data: progressData, error: progressError } = await supabase
+                  .from('Inquiry_Progress')
+                  .select('eid');
+                  
+                if (progressError) {
+                  throw progressError;
+                }
+                
+                // Extract the eids (inquiry ids) that have progress entries
+                const inquiryIdsWithProgress = progressData.map(item => item.eid);
+                
+                // Query to get new inquiries EXCLUDING any that have matching IDs in Inquiry_Progress table
+                let newInquiriesQuery = supabase
+                  .from('enquiries')
+                  .select('*')
+                  .eq('Enquiry Progress', 'New');
+                  
+                // If there are inquiries with progress, exclude them
+                if (inquiryIdsWithProgress.length > 0) {
+                  newInquiriesQuery = newInquiriesQuery.not('id', 'in', `(${inquiryIdsWithProgress.join(',')})`);
+                }
+                
+                const { data: newInquiriesData, error: newInquiriesError } = await newInquiriesQuery;
+
+                if (newInquiriesError) {
+                  throw newInquiriesError;
+                }
+
+                console.log('New inquiries fetched:', newInquiriesData?.length || 0);
+                
+                // Transform the new inquiries data to match the Enquiry type
+                const newInquiries = (newInquiriesData || []).map(enquiry => ({
+                  id: enquiry.id,
+                  clientName: enquiry["Client Name"] || 'Unknown Client',
+                  mobile: enquiry.Mobile || '',
+                  configuration: enquiry.Configuration || '',
+                  description: enquiry["Last Remarks"] || '',
+                  status: enquiry["Enquiry Progress"]?.toLowerCase() || 'new',
+                  source: (enquiry["Enquiry Source"] || 'REF') as InquirySource,
+                  assignedEmployee: enquiry["Assigned To"] || '',
+                  dateCreated: enquiry["Created Date"] || new Date().toISOString(),
+                  category: 'new' as const
+                }));
+                
+                return newInquiries;
+              } catch (error) {
+                console.error('Error fetching new inquiries:', error);
+                return [];
+              }
+            })()
+          ]);
           
-        // If there are inquiries with progress, exclude them
-        if (inquiryIdsWithProgress.length > 0) {
-          // This ensures that any inquiry ID that matches an eid in Inquiry_Progress is excluded
-          newInquiriesQuery = newInquiriesQuery.not('id', 'in', `(${inquiryIdsWithProgress.join(',')})`);
-        }
-        
-        const { data: newInquiriesData, error: newInquiriesError } = await newInquiriesQuery;
-
-        if (newInquiriesError) {
-          console.error('Error fetching new inquiries from Supabase:', newInquiriesError);
-          throw newInquiriesError;
-        }
-
-        console.log('New inquiries fetched (excluding those with progress):', newInquiriesData?.length || 0);
-        
-        // Transform the new inquiries data to match the Enquiry type for the dashboard
-        const newInquiries = newInquiriesData.map(enquiry => ({
-          id: enquiry.id,
-          clientName: enquiry["Client Name"] || 'Unknown Client',
-          mobile: enquiry.Mobile || '',
-          configuration: enquiry.Configuration || '',
-          description: enquiry["Last Remarks"] || '',
-          status: enquiry["Enquiry Progress"]?.toLowerCase() || 'new',
-          source: (enquiry["Enquiry Source"] || 'REF') as InquirySource,
-          assignedEmployee: enquiry["Assigned To"] || '',
-          dateCreated: enquiry["Created Date"] || new Date().toISOString(),
-          category: 'new' as const // Use 'as const' to ensure proper typing
-        }));
-        
-        // Get today's enquiries from Supabase
-        console.log('Fetching today\'s enquiries...');
-        const todaysEnquiries = await fetchTodaysEnquiries();
-        console.log('Today\'s enquiries loaded:', todaysEnquiries.length);
-        
-        // Get due enquiries from Supabase (older than yesterday)
-        console.log('Fetching due enquiries...');
-        const dueEnquiries = await fetchDueEnquiries();
-        console.log('Due enquiries loaded:', dueEnquiries.length);
-        
-        // Get yesterday's enquiries from Supabase
-        console.log("Fetching yesterday's enquiries...");
-        const yesterdaysEnquiries = await fetchYesterdaysEnquiries();
-        console.log("Yesterday's enquiries loaded:", yesterdaysEnquiries.length);
-        
-        // Get weekend enquiries from localStorage (keeping this unchanged for now)
-        const localStorageEnquiries = getEnquiries();
-        const weekendEnquiries = localStorageEnquiries.filter(e => e.category === 'weekend');
-        
-        // Categorize enquiries
-        const categorized = {
-          new: newInquiries, // Use Supabase data for new inquiries with exclusion logic
-          today: todaysEnquiries, 
-          yesterday: yesterdaysEnquiries,
-          due: dueEnquiries,
-          weekend: weekendEnquiries
-        };
-        
-        console.log('Categorized enquiries:', {
-          new: categorized.new.length,
-          today: categorized.today.length,
-          yesterday: categorized.yesterday.length,
-          due: categorized.due.length,
-          weekend: categorized.weekend.length
-        });
-        
-        setCategorizedEnquiries(categorized);
-
-        // Simulate loading for UI polish
-        setTimeout(() => {
+          // Update state with all categories
+          setCategorizedEnquiries({
+            today: todayInquiries || [],
+            due: dueInquiries || [],
+            yesterday: yesterdayInquiries || [],
+            new: newInquiries || [],
+            weekend: [] // We no longer use this category
+          });
+          
+          console.log('Dashboard data loaded successfully:');
+          console.log('- Today:', todayInquiries?.length || 0);
+          console.log('- Due:', dueInquiries?.length || 0);
+          console.log('- Yesterday:', yesterdayInquiries?.length || 0);
+          console.log('- New:', newInquiries?.length || 0);
+          
+        } catch (error) {
+          console.error('Error loading dashboard data:', error);
+        } finally {
           setIsLoading(false);
-          console.log('Dashboard data loading complete');
-        }, 500);
-      } catch (error) {
-        console.error('Error loading data:', error);
-        setIsLoading(false);
-      }
-    };
+        }
+      };
+      
+      loadData();
+    }
+  }, [user, loading]);
 
-    loadData();
-  }, []);
+  // If still loading auth state, show loading indicator
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#c69c6d]"></div>
+      </div>
+    );
+  }
 
   const handleSearch = (query: string) => {
     console.log('Dashboard search:', query);
@@ -710,13 +584,6 @@ export default function Home() {
                   icon={<YesterdayIcon />}
                   enquiries={categorizedEnquiries.yesterday}
                   colorClass="from-purple-500/20 to-purple-600/20 border-purple-200 dark:border-purple-800/30"
-                />
-                <CategoryCard 
-                  title="Weekend" 
-                  count={categorizedEnquiries.weekend.length}
-                  icon={<WeekendIcon />}
-                  enquiries={categorizedEnquiries.weekend}
-                  colorClass="from-amber-500/20 to-amber-600/20 border-amber-200 dark:border-amber-800/30"
                 />
               </div>
             </div>
