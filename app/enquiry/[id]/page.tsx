@@ -37,6 +37,21 @@ const getWhatsAppUrl = (mobile: string): string => {
   return `https://wa.me/${numberWithCountryCode.replace('+', '')}`;
 };
 
+// Add a utility function to format phone number for calls
+const getPhoneCallUrl = (mobile: string): string => {
+  // Clean up the phone number - remove spaces, dashes, parentheses, etc.
+  const cleanedNumber = mobile.replace(/[\s\-\(\)]/g, '');
+  
+  // Make sure it starts with a country code, default to India (+91) if no code
+  const numberWithCountryCode = cleanedNumber.startsWith('+') 
+    ? cleanedNumber 
+    : cleanedNumber.startsWith('91') 
+      ? `+${cleanedNumber}` 
+      : `+91${cleanedNumber}`;
+      
+  return `tel:${numberWithCountryCode}`;
+};
+
 const EnquiryDetailsPage = () => {
   const params = useParams();
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
@@ -136,6 +151,13 @@ const EnquiryDetailsPage = () => {
                   title="Open in WhatsApp"
                 >
                   WhatsApp
+                </a>
+                <a
+                  href={getPhoneCallUrl(enquiry.contactNumber)}
+                  className="px-2 py-0.5 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                  title="Call this number"
+                >
+                  Call
                 </a>
               </div>
             </div>

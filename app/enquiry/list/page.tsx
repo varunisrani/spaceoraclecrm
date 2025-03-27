@@ -89,6 +89,21 @@ const getWhatsAppUrl = (mobile: string): string => {
   return `https://wa.me/${numberWithCountryCode.replace('+', '')}`;
 };
 
+// Add a utility function to format phone number for calls
+const getPhoneCallUrl = (mobile: string): string => {
+  // Clean up the phone number - remove spaces, dashes, parentheses, etc.
+  const cleanedNumber = mobile.replace(/[\s\-\(\)]/g, '');
+  
+  // Make sure it starts with a country code, default to India (+91) if no code
+  const numberWithCountryCode = cleanedNumber.startsWith('+') 
+    ? cleanedNumber 
+    : cleanedNumber.startsWith('91') 
+      ? `+${cleanedNumber}` 
+      : `+91${cleanedNumber}`;
+      
+  return `tel:${numberWithCountryCode}`;
+};
+
 export default function EnquiryList() {
   const [enquiries, setEnquiries] = useState<Enquiry[]>([]);
   const [filteredEnquiries, setFilteredEnquiries] = useState<Enquiry[]>([]);
@@ -492,17 +507,27 @@ export default function EnquiryList() {
                         <div>
                           <div className="font-medium">{enquiry["Client Name"]}</div>
                           <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-                            <span>{enquiry["Mobile"]}</span>
-                            <a
-                              href={getWhatsAppUrl(enquiry["Mobile"])}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="px-2 py-0.5 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
-                              title="Open in WhatsApp"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              WhatsApp
-                            </a>
+                            <span className="flex items-center gap-1">
+                              {enquiry["Mobile"]}
+                              <a
+                                href={getWhatsAppUrl(enquiry["Mobile"])}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-2 py-0.5 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+                                title="Open in WhatsApp"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                WhatsApp
+                              </a>
+                              <a
+                                href={getPhoneCallUrl(enquiry["Mobile"])}
+                                className="px-2 py-0.5 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                                title="Call this number"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                Call
+                              </a>
+                            </span>
                           </div>
                         </div>
                       </div>
