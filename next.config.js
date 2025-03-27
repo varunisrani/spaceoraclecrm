@@ -16,6 +16,15 @@ const nextConfig = {
   images: {
     domains: ['i.ibb.co'],
   },
+  // SWC minify configuration to help with ARM64 compatibility
+  swcMinify: true,
+  // Experimental features
+  experimental: {
+    // Disable SWC trace profiling to reduce errors
+    swcTraceProfiling: false,
+    // Enable platform-specific optimizations explicitly if needed
+    fallbackNodePolyfills: false
+  }
 };
 
 module.exports = nextConfig; 
