@@ -1,5 +1,6 @@
 import React from 'react';
 import { supabase } from '../utils/supabase';
+import DatePickerInput from './DatePickerInput';
 
 interface ScheduleVisitFormProps {
   onClose: () => void;
@@ -98,13 +99,11 @@ export default function ScheduleVisitForm({ onClose, onSubmit }: ScheduleVisitFo
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Visit Date</label>
-            <input 
-              type="date"
+            <label className="block text-sm font-medium text-gray-700">Visit Date (DD/MM/YYYY)</label>
+            <DatePickerInput
               name="scheduledDate"
               value={formData.scheduledDate}
               onChange={handleInputChange}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               required
             />
           </div>

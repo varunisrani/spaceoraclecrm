@@ -1,5 +1,6 @@
 import React from 'react';
 import { supabase } from '../utils/supabase';
+import DatePickerInput from './DatePickerInput';
 
 interface EditInquiryProgressFormProps {
   progressId: string;
@@ -174,13 +175,10 @@ export default function EditInquiryProgressForm({
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Date (DD/MM/YYYY)</label>
-            <input 
-              type="text"
+            <DatePickerInput
               name="date"
               value={formData.date}
               onChange={handleInputChange}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm sm:text-base py-2"
-              placeholder="Enter date in DD/MM/YYYY format"
               required
             />
           </div>
