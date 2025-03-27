@@ -22,6 +22,21 @@ interface EnquiryDetails {
   remarks: InquiryRemark[];
 }
 
+// Add a utility function to convert mobile number to WhatsApp Web URL
+const getWhatsAppUrl = (mobile: string): string => {
+  // Clean up the phone number - remove spaces, dashes, parentheses, etc.
+  const cleanedNumber = mobile.replace(/[\s\-\(\)]/g, '');
+  
+  // Make sure it starts with a country code, default to India (+91) if no code
+  const numberWithCountryCode = cleanedNumber.startsWith('+') 
+    ? cleanedNumber 
+    : cleanedNumber.startsWith('91') 
+      ? `+${cleanedNumber}` 
+      : `+91${cleanedNumber}`;
+      
+  return `https://wa.me/${numberWithCountryCode.replace('+', '')}`;
+};
+
 const EnquiryDetailsPage = () => {
   const params = useParams();
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
@@ -111,7 +126,18 @@ const EnquiryDetailsPage = () => {
             </div>
             <div>
               <label className="text-xs sm:text-sm text-gray-500">Contact Number</label>
-              <p className="font-medium">{enquiry.contactNumber}</p>
+              <div className="flex items-center gap-2">
+                <p className="font-medium">{enquiry.contactNumber}</p>
+                <a
+                  href={getWhatsAppUrl(enquiry.contactNumber)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-2 py-0.5 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+                  title="Open in WhatsApp"
+                >
+                  WhatsApp
+                </a>
+              </div>
             </div>
             <div>
               <label className="text-xs sm:text-sm text-gray-500">Property Type</label>

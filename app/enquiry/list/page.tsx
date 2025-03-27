@@ -74,6 +74,21 @@ function SearchParamsHandler({ onSearchChange, onCategoryChange }: {
   return null; // This component doesn't render anything
 }
 
+// Add a utility function to convert mobile number to WhatsApp Web URL
+const getWhatsAppUrl = (mobile: string): string => {
+  // Clean up the phone number - remove spaces, dashes, parentheses, etc.
+  const cleanedNumber = mobile.replace(/[\s\-\(\)]/g, '');
+  
+  // Make sure it starts with a country code, default to India (+91) if no code
+  const numberWithCountryCode = cleanedNumber.startsWith('+') 
+    ? cleanedNumber 
+    : cleanedNumber.startsWith('91') 
+      ? `+${cleanedNumber}` 
+      : `+91${cleanedNumber}`;
+      
+  return `https://wa.me/${numberWithCountryCode.replace('+', '')}`;
+};
+
 export default function EnquiryList() {
   const [enquiries, setEnquiries] = useState<Enquiry[]>([]);
   const [filteredEnquiries, setFilteredEnquiries] = useState<Enquiry[]>([]);
@@ -476,7 +491,19 @@ export default function EnquiryList() {
                         </div>
                         <div>
                           <div className="font-medium">{enquiry["Client Name"]}</div>
-                          <div className="text-xs text-gray-500 dark:text-gray-400">{enquiry["Mobile"]}</div>
+                          <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                            <span>{enquiry["Mobile"]}</span>
+                            <a
+                              href={getWhatsAppUrl(enquiry["Mobile"])}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="px-2 py-0.5 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+                              title="Open in WhatsApp"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              WhatsApp
+                            </a>
+                          </div>
                         </div>
                       </div>
                     </td>
