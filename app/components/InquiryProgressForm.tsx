@@ -37,16 +37,29 @@ export default function InquiryProgressForm({ inquiryId, onClose, onSuccess }: I
     try {
       setIsSaving(true);
 
+      // Create a data object for the Inquiry_Progress table
+      const progressData: {
+        eid: string;
+        progress_type: string;
+        remark: string;
+        date?: string;
+        created_at: string;
+      } = {
+        eid: inquiryId,
+        progress_type: formData.progressType,
+        remark: formData.remarks,
+        created_at: new Date().toISOString()
+      };
+      
+      // Only add date if it's provided
+      if (formData.date) {
+        progressData.date = formData.date;
+      }
+
       // Insert into Inquiry_Progress table
-      const { data: progressData, error: progressError } = await supabase
+      const { data: insertedData, error: progressError } = await supabase
         .from('Inquiry_Progress')
-        .insert({
-          eid: inquiryId,
-          progress_type: formData.progressType,
-          remark: formData.remarks,
-          date: formData.date,
-          created_at: new Date().toISOString()
-        })
+        .insert(progressData)
         .select();
 
       if (progressError) {
@@ -55,11 +68,15 @@ export default function InquiryProgressForm({ inquiryId, onClose, onSuccess }: I
       }
 
       // Update NFD and other fields in the inquiries table
-      // Prepare update data - always update NFD and Last Remarks
+      // Prepare update data - always update Last Remarks
       const updateData: { [key: string]: string } = {
-        "NFD": formData.date,
         "Last Remarks": formData.remarks
       };
+      
+      // Only update NFD if date is provided
+      if (formData.date) {
+        updateData["NFD"] = formData.date;
+      }
       
       // Also update the Enquiry Progress field based on progressType
       updateData["Enquiry Progress"] = formData.progressType
@@ -82,7 +99,7 @@ export default function InquiryProgressForm({ inquiryId, onClose, onSuccess }: I
       console.log('Updated inquiry in inquiries table successfully');
 
       // If we get here, everything was successful
-      console.log('Progress saved successfully:', progressData);
+      console.log('Progress saved successfully:', insertedData);
 
       // Reset form and close modal
       setFormData({
@@ -162,7 +179,6 @@ export default function InquiryProgressForm({ inquiryId, onClose, onSuccess }: I
               name="date"
               value={formData.date}
               onChange={handleInputChange}
-              required
             />
           </div>
 

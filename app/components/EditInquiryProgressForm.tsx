@@ -72,14 +72,23 @@ export default function EditInquiryProgressForm({
         if (error) throw error;
       } else {
         // Update in Inquiry_Progress table
+        const updateProgressData: {
+          progress_type: string;
+          remark: string;
+          date?: string;
+        } = {
+          progress_type: formData.progressType,
+          remark: formData.remarks,
+        };
+        
+        // Only include date if it's provided
+        if (formData.date) {
+          updateProgressData.date = formData.date;
+        }
+        
         const { error } = await supabase
           .from('Inquiry_Progress')
-          .update({
-            progress_type: formData.progressType,
-            remark: formData.remarks,
-            date: formData.date,
-            // Don't update created_at to preserve the original timestamp
-          })
+          .update(updateProgressData)
           .eq('id', progressId);
 
         if (error) throw error;
@@ -92,10 +101,14 @@ export default function EditInquiryProgressForm({
         
         // Prepare update data for the enquiries table
         const updateData: { [key: string]: string } = {
-          "NFD": formData.date,
           "Last Remarks": formData.remarks,
           "Enquiry Progress": formattedProgressType // Also update the Enquiry Progress field
         };
+        
+        // Only update NFD if date is provided
+        if (formData.date) {
+          updateData["NFD"] = formData.date;
+        }
         
         console.log('Updating enquiry with data:', updateData);
         
@@ -186,7 +199,6 @@ export default function EditInquiryProgressForm({
               name="date"
               value={formData.date}
               onChange={handleInputChange}
-              required
             />
           </div>
 
