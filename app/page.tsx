@@ -1,13 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Enquiry, DashboardStats, InquirySource } from './types';
-import { getEnquiries } from './utils/localStorage';
+import { Enquiry, InquirySource } from './types';
 import { useInitializeData } from './utils/initializeData';
 import SearchBar from './components/SearchBar';
 import Link from 'next/link';
 import { supabase } from './utils/supabase';
 import { useAuth } from './context/AuthContext';
+import { useInquiryStore } from './store/inquiryStore';
 
 // Commented out as it's not currently used
 // interface EnquiryCount {
@@ -33,14 +33,15 @@ import { useAuth } from './context/AuthContext';
 export default function Home() {
   const { user, loading } = useAuth();
   useInitializeData();
-  
+  const { setTodayInquiries } = useInquiryStore();
+
   const [stats, setStats] = useState({
     totalEnquiries: 0,
     newEnquiries: 0,
     pendingSiteVisits: 0,
     totalSales: 0
   });
-  
+
   const [categorizedEnquiries, setCategorizedEnquiries] = useState<{
     new: Enquiry[],
     today: Enquiry[],
@@ -56,7 +57,7 @@ export default function Home() {
   });
 
   const [isLoading, setIsLoading] = useState(true);
-  
+
   // Helper function to format date consistently
   const formatDate = (date: Date): string => {
     return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
@@ -74,16 +75,16 @@ export default function Home() {
   // Helper function to parse DD/MM/YYYY to Date
   const parseDate = (dateStr: string): Date | null => {
     if (!dateStr || typeof dateStr !== 'string') return null;
-    
+
     const parts = dateStr.split('/');
     if (parts.length !== 3) return null;
-    
+
     const day = parseInt(parts[0], 10);
     const month = parseInt(parts[1], 10) - 1; // JavaScript months are 0-based
     const year = parseInt(parts[2], 10);
-    
+
     if (isNaN(day) || isNaN(month) || isNaN(year)) return null;
-    
+
     return new Date(year, month, day);
   };
 
@@ -95,26 +96,26 @@ export default function Home() {
         .from('Inquiry_Progress')
         .select('eid')
         .eq('progress_type', 'deal_lost');
-        
+
       if (dealLostError) {
         console.error('Error fetching deal_lost entries from Inquiry_Progress table:', dealLostError);
         throw dealLostError;
       }
-      
+
       // Extract the eids (inquiry ids) that have deal_lost progress entries
       const dealLostInquiryIds = dealLostData.map(item => item.eid);
       console.log('Inquiries with deal_lost progress to exclude from counts:', dealLostInquiryIds.length);
-      
+
       // Get total count, excluding deal_lost inquiries
       let totalCountQuery = supabase
         .from('enquiries')
         .select('*', { count: 'exact', head: true });
-        
+
       // Exclude inquiries with deal_lost progress if there are any
       if (dealLostInquiryIds.length > 0) {
         totalCountQuery = totalCountQuery.not('id', 'in', `(${dealLostInquiryIds.join(',')})`);
       }
-      
+
       const { count: totalCount, error: totalError } = await totalCountQuery;
 
       if (totalError) throw totalError;
@@ -124,32 +125,32 @@ export default function Home() {
       const { data: progressData, error: progressError } = await supabase
         .from('Inquiry_Progress')
         .select('eid');
-        
+
       if (progressError) {
         console.error('Error fetching from Inquiry_Progress table:', progressError);
         throw progressError;
       }
-      
+
       // Extract the eids (inquiry ids) that have progress entries
       const inquiryIdsWithProgress = progressData.map(item => item.eid);
-      
+
       // Query to count new inquiries EXCLUDING any that have matching IDs in Inquiry_Progress table
       let newInquiriesQuery = supabase
         .from('enquiries')
         .select('*', { count: 'exact', head: true })
         .eq('Enquiry Progress', 'New');
-        
+
       // If there are inquiries with progress, exclude them
       if (inquiryIdsWithProgress.length > 0) {
         // This ensures that any inquiry ID that matches an eid in Inquiry_Progress is excluded
         newInquiriesQuery = newInquiriesQuery.not('id', 'in', `(${inquiryIdsWithProgress.join(',')})`);
       }
-      
+
       // Also exclude deal_lost inquiries from new inquiries count
       if (dealLostInquiryIds.length > 0) {
         newInquiriesQuery = newInquiriesQuery.not('id', 'in', `(${dealLostInquiryIds.join(',')})`);
       }
-      
+
       const { count: newCount, error: newError } = await newInquiriesQuery;
 
       if (newError) {
@@ -162,7 +163,7 @@ export default function Home() {
       // Get today's site visits from Inquiry_Progress table
       const today = new Date();
       const formattedDate = formatDate(today);
-      
+
       // Updated site visits logic to match Today's Site Visits page
       const { data: siteVisitData, error: siteVisitsError } = await supabase
         .from('Inquiry_Progress')
@@ -175,20 +176,20 @@ export default function Home() {
 
       // Create a Map to store the latest entry for each unique eid
       const latestVisitMap = new Map<string, any>();
-      
+
       // Loop through all entries and keep only the latest one for each eid
       (siteVisitData || []).forEach(item => {
         if (!latestVisitMap.has(item.eid)) {
           latestVisitMap.set(item.eid, item);
         }
       });
-      
+
       console.log(`Found ${siteVisitData?.length || 0} total site visits, filtered to ${latestVisitMap.size} unique inquiries`);
-      
+
       // Use the size of the Map as the count of unique site visits
       const uniqueSiteVisitsCount = latestVisitMap.size;
 
-      // Get total deals done count from Inquiry_Progress table 
+      // Get total deals done count from Inquiry_Progress table
       // by counting unique inquiry IDs (eids) that have 'deal_done' progress
       const { data: dealsDoneData, error: dealsError } = await supabase
         .from('Inquiry_Progress')
@@ -203,7 +204,7 @@ export default function Home() {
       // Get unique inquiry IDs with 'deal_done' progress
       const uniqueDealDoneIds = [...new Set(dealsDoneData.map(item => item.eid))];
       const dealsDoneCount = uniqueDealDoneIds.length;
-      
+
       console.log('Total sales (unique inquiries with deal_done progress):', dealsDoneCount);
 
       setStats(prev => ({
@@ -225,9 +226,9 @@ export default function Home() {
       // Get today's date in DD/MM/YYYY format
       const today = new Date();
       const formattedDate = formatDate(today);
-      
+
       console.log('Fetching today\'s data with date:', formattedDate);
-      
+
       // PART 1: Fetch from enquiries table where NFD = today
       const { data: nfdData, error: nfdError } = await supabase
         .from('enquiries')
@@ -237,7 +238,7 @@ export default function Home() {
       if (nfdError) throw nfdError;
 
       console.log('Enquiries with NFD = today:', nfdData?.length || 0);
-      
+
       // Transform the NFD data to match the Enquiry type
       const nfdTransformedData: Enquiry[] = (nfdData || []).map(enquiry => ({
         id: enquiry.id,
@@ -265,33 +266,33 @@ export default function Home() {
       // Get current date
       const today = new Date();
       today.setHours(0, 0, 0, 0); // Set to start of day for comparison
-      
+
       console.log('Fetching due inquiries (before today)');
-      
+
       // Fetch all enquiries
       const { data, error } = await supabase
         .from('enquiries')
         .select('*');
 
       if (error) throw error;
-      
+
       // Filter inquiries where NFD is earlier than today
       const filteredData = (data || []).filter(enquiry => {
         // Skip if no NFD
         if (!enquiry.NFD) return false;
-        
+
         // Parse the NFD date
         const nfdDate = parseDate(enquiry.NFD);
-        
+
         // If can't parse or date is invalid, skip
         if (!nfdDate) return false;
-        
+
         // The only condition: NFD is earlier than today
         return nfdDate < today;
       });
-      
+
       console.log('Due enquiries (NFD earlier than today):', filteredData.length);
-      
+
       // Transform the data to match the Enquiry type
       const transformedData: Enquiry[] = filteredData.map(enquiry => ({
         id: enquiry.id,
@@ -321,9 +322,9 @@ export default function Home() {
       const yesterday = new Date(today);
       yesterday.setDate(today.getDate() - 1);
       const yesterdayFormatted = formatDate(yesterday);
-      
+
       console.log('Fetching yesterday\'s data with date:', yesterdayFormatted);
-      
+
       // Fetch enquiries where NFD is yesterday
       const { data, error } = await supabase
         .from('enquiries')
@@ -331,9 +332,9 @@ export default function Home() {
         .eq('NFD', yesterdayFormatted);
 
       if (error) throw error;
-      
+
       console.log('Yesterday\'s enquiries found:', data?.length || 0);
-      
+
       // Transform the data to match the Enquiry type
       const transformedData: Enquiry[] = (data || []).map(enquiry => ({
         id: enquiry.id,
@@ -363,7 +364,7 @@ export default function Home() {
         try {
           // Fetch inquiry counts for the stats cards
           await fetchEnquiryCounts();
-          
+
           // Fetch all inquiry categories in parallel
           const [todayInquiries, dueInquiries, yesterdayInquiries, newInquiries] = await Promise.all([
             fetchTodaysEnquiries(),
@@ -376,25 +377,25 @@ export default function Home() {
                 const { data: progressData, error: progressError } = await supabase
                   .from('Inquiry_Progress')
                   .select('eid');
-                  
+
                 if (progressError) {
                   throw progressError;
                 }
-                
+
                 // Extract the eids (inquiry ids) that have progress entries
                 const inquiryIdsWithProgress = progressData.map(item => item.eid);
-                
+
                 // Query to get new inquiries EXCLUDING any that have matching IDs in Inquiry_Progress table
                 let newInquiriesQuery = supabase
                   .from('enquiries')
                   .select('*')
                   .eq('Enquiry Progress', 'New');
-                  
+
                 // If there are inquiries with progress, exclude them
                 if (inquiryIdsWithProgress.length > 0) {
                   newInquiriesQuery = newInquiriesQuery.not('id', 'in', `(${inquiryIdsWithProgress.join(',')})`);
                 }
-                
+
                 const { data: newInquiriesData, error: newInquiriesError } = await newInquiriesQuery;
 
                 if (newInquiriesError) {
@@ -402,7 +403,7 @@ export default function Home() {
                 }
 
                 console.log('New inquiries fetched:', newInquiriesData?.length || 0);
-                
+
                 // Transform the new inquiries data to match the Enquiry type
                 const newInquiries = (newInquiriesData || []).map(enquiry => ({
                   id: enquiry.id,
@@ -416,7 +417,7 @@ export default function Home() {
                   dateCreated: enquiry["Created Date"] || new Date().toISOString(),
                   category: 'new' as const
                 }));
-                
+
                 return newInquiries;
               } catch (error) {
                 console.error('Error fetching new inquiries:', error);
@@ -424,7 +425,7 @@ export default function Home() {
               }
             })()
           ]);
-          
+
           // Update state with all categories
           setCategorizedEnquiries({
             today: todayInquiries || [],
@@ -433,20 +434,23 @@ export default function Home() {
             new: newInquiries || [],
             weekend: [] // We no longer use this category
           });
-          
+
+          // Store today's inquiries in the global store for sharing with Today Inquiries page
+          setTodayInquiries(todayInquiries || []);
+
           console.log('Dashboard data loaded successfully:');
           console.log('- Today:', todayInquiries?.length || 0);
           console.log('- Due:', dueInquiries?.length || 0);
           console.log('- Yesterday:', yesterdayInquiries?.length || 0);
           console.log('- New:', newInquiries?.length || 0);
-          
+
         } catch (error) {
           console.error('Error loading dashboard data:', error);
         } finally {
           setIsLoading(false);
         }
       };
-      
+
       loadData();
     }
   }, [user, loading]);
@@ -482,7 +486,7 @@ export default function Home() {
       <div className="relative mb-12">
         <div className="absolute inset-0 bg-gradient-to-r from-[#1a2e29]/90 to-[#264a42]/90 rounded-2xl -z-10"></div>
         <div className="absolute inset-0 bg-[url('/hero-pattern.svg')] opacity-10 mix-blend-overlay rounded-2xl -z-10"></div>
-        
+
         <div className="relative py-14 px-8 text-center">
           <h1 className="text-4xl md:text-5xl font-bold text-white mb-3">
             Welcome to <span className="text-[#c69c6d]">Space Oracle CRM</span>
@@ -494,18 +498,18 @@ export default function Home() {
             </p>
             <div className="h-[1px] w-12 bg-[#c69c6d]/50"></div>
           </div>
-          
+
           <div className="max-w-2xl mx-auto">
-            <SearchBar 
-              onSearch={handleSearch} 
-              placeholder="Search properties, clients, or enquiries..." 
+            <SearchBar
+              onSearch={handleSearch}
+              placeholder="Search properties, clients, or enquiries..."
               submitOnEnter={true}
               redirectUrl="/enquiry/list"
             />
           </div>
         </div>
       </div>
-      
+
       {/* Dashboard Content */}
       {isLoading ? (
         <div className="flex justify-center items-center py-24">
@@ -515,36 +519,36 @@ export default function Home() {
         <div className="space-y-10 px-2 sm:px-0">
           {/* Quick Stats */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-            <StatCard 
-              title="New Enquiries" 
+            <StatCard
+              title="New Enquiries"
               value={stats.newEnquiries}
               icon={<NewIcon />}
               href="/new-inquiries"
               color="blue"
             />
-            <StatCard 
-              title="Total Enquiries" 
+            <StatCard
+              title="Total Enquiries"
               value={stats.totalEnquiries}
               icon={<DocumentIcon />}
               href="/enquiry/list"
               color="green"
             />
-            <StatCard 
-              title="Today's Site Visits" 
+            <StatCard
+              title="Today's Site Visits"
               value={stats.pendingSiteVisits}
               icon={<CalendarIcon />}
               href="/todays-site-visits"
               color="purple"
             />
-            <StatCard 
-              title="Sales" 
+            <StatCard
+              title="Sales"
               value={stats.totalSales}
               icon={<CurrencyIcon />}
               href="/sales-inquiries"
               color="gold"
             />
           </div>
-          
+
           <div className="grid grid-cols-1 gap-8">
             <div className="space-y-6">
               {/* Categorized Enquiries */}
@@ -552,34 +556,34 @@ export default function Home() {
                 <span className="inline-block w-1.5 h-5 bg-[#c69c6d] rounded-full mr-2"></span>
                 Enquiries by Category
               </h2>
-              
+
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
-                <CategoryCard 
-                  title="New" 
+                <CategoryCard
+                  title="New"
                   count={categorizedEnquiries.new.length}
                   icon={<NewIcon />}
                   enquiries={categorizedEnquiries.new}
                   colorClass="from-blue-500/20 to-blue-600/20 border-blue-200 dark:border-blue-800/30"
                 />
-                <CategoryCard 
-                  title="Today" 
+                <CategoryCard
+                  title="Today"
                   count={categorizedEnquiries.today.length}
                   icon={<TodayIcon />}
                   enquiries={categorizedEnquiries.today}
                   colorClass="from-green-500/20 to-green-600/20 border-green-200 dark:border-green-800/30"
                 />
-                <CategoryCard 
-                  title="Due" 
+                <CategoryCard
+                  title="Due"
                   count={categorizedEnquiries.due.length}
                   icon={<DueIcon />}
                   enquiries={categorizedEnquiries.due}
                   colorClass="from-orange-500/20 to-orange-600/20 border-orange-200 dark:border-orange-800/30"
                 />
               </div>
-              
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-                <CategoryCard 
-                  title="Yesterday" 
+                <CategoryCard
+                  title="Yesterday"
                   count={categorizedEnquiries.yesterday.length}
                   icon={<YesterdayIcon />}
                   enquiries={categorizedEnquiries.yesterday}
@@ -594,10 +598,10 @@ export default function Home() {
   );
 }
 
-const StatCard = ({ title, value, icon, href, color = 'default' }: { 
-  title: string; 
-  value: number; 
-  icon: React.ReactNode; 
+const StatCard = ({ title, value, icon, href, color = 'default' }: {
+  title: string;
+  value: number;
+  icon: React.ReactNode;
   href?: string;
   color?: 'blue' | 'green' | 'purple' | 'gold' | 'default';
 }) => {
@@ -647,16 +651,16 @@ const StatCard = ({ title, value, icon, href, color = 'default' }: {
   );
 };
 
-const CategoryCard = ({ title, count, icon, enquiries, colorClass }: { 
-  title: string; 
-  count: number; 
-  icon: React.ReactNode; 
+const CategoryCard = ({ title, count, icon, enquiries, colorClass }: {
+  title: string;
+  count: number;
+  icon: React.ReactNode;
   enquiries: Enquiry[];
   colorClass: string;
 }) => {
   // Type that extends Enquiry with optional progressType is still needed for the view all link
   type EnquiryWithProgress = Enquiry & { progressType?: string };
-  
+
   // Convert title to category value for filtering
   const getCategoryValue = (title: string) => {
     return title.toLowerCase();
@@ -694,9 +698,9 @@ const CategoryCard = ({ title, count, icon, enquiries, colorClass }: {
           {icon}
         </div>
       </div>
-      
+
       {count > 0 ? (
-        <Link 
+        <Link
           href={getLink(title)}
           className="w-full block text-center py-3 px-4 rounded-lg bg-white/70 dark:bg-gray-900/40 text-[#1a2e29] dark:text-white hover:bg-white/90 dark:hover:bg-gray-900/60 transition-colors text-sm font-medium"
         >

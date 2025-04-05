@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '../utils/supabase';
 import SearchBar from '../components/SearchBar';
+import { useInquiryStore } from '../store/inquiryStore';
+import { Enquiry as DashboardEnquiry } from '../types';
 
 interface Inquiry {
   id: string | number;
@@ -15,11 +17,7 @@ interface Inquiry {
   source: string;
   assignedEmployee: string;
   dateCreated: string;
-  sourceType: 'nfd' | 'progress' | 'both';
-  progressType?: string;
-  progressRemark?: string;
-  progressDate?: string;
-  eid?: string | number;
+  sourceType: 'nfd';
 }
 
 // Supabase response types
@@ -33,32 +31,22 @@ interface EnquiryRecord {
   "Enquiry Source"?: string;
   "Assigned To"?: string;
   "Created Date"?: string;
+  "NFD"?: string;
   [key: string]: string | number | boolean | null | undefined;  // For other potential fields
-}
-
-interface ProgressRecord {
-  id: string | number;
-  eid: string | number;
-  progress_type?: string;
-  remark?: string;
-  date?: string;
-  created_at?: string;
-  enquiries?: EnquiryRecord;  // Specifically typed to EnquiryRecord
-  [key: string]: string | number | boolean | null | undefined | EnquiryRecord;  // For other potential fields
 }
 
 // Add a utility function to convert mobile number to WhatsApp Web URL
 const getWhatsAppUrl = (mobile: string): string => {
   // Clean up the phone number - remove spaces, dashes, parentheses, etc.
   const cleanedNumber = mobile.replace(/[\s\-\(\)]/g, '');
-  
+
   // Make sure it starts with a country code, default to India (+91) if no code
-  const numberWithCountryCode = cleanedNumber.startsWith('+') 
-    ? cleanedNumber 
-    : cleanedNumber.startsWith('91') 
-      ? `+${cleanedNumber}` 
+  const numberWithCountryCode = cleanedNumber.startsWith('+')
+    ? cleanedNumber
+    : cleanedNumber.startsWith('91')
+      ? `+${cleanedNumber}`
       : `+91${cleanedNumber}`;
-      
+
   return `https://wa.me/${numberWithCountryCode.replace('+', '')}`;
 };
 
@@ -66,26 +54,50 @@ const getWhatsAppUrl = (mobile: string): string => {
 const getPhoneCallUrl = (mobile: string): string => {
   // Clean up the phone number - remove spaces, dashes, parentheses, etc.
   const cleanedNumber = mobile.replace(/[\s\-\(\)]/g, '');
-  
+
   // Make sure it starts with a country code, default to India (+91) if no code
-  const numberWithCountryCode = cleanedNumber.startsWith('+') 
-    ? cleanedNumber 
-    : cleanedNumber.startsWith('91') 
-      ? `+${cleanedNumber}` 
+  const numberWithCountryCode = cleanedNumber.startsWith('+')
+    ? cleanedNumber
+    : cleanedNumber.startsWith('91')
+      ? `+${cleanedNumber}`
       : `+91${cleanedNumber}`;
-      
+
   return `tel:${numberWithCountryCode}`;
 };
 
 export default function TodayInquiries() {
+  const { todayInquiries } = useInquiryStore();
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [filteredInquiries, setFilteredInquiries] = useState<Inquiry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState<string>('');
 
   useEffect(() => {
-    fetchTodaysInquiries();
-  }, []);
+    // If we have inquiries from the dashboard, use those
+    if (todayInquiries.length > 0) {
+      // Convert dashboard Enquiry type to our local Inquiry type
+      const convertedInquiries: Inquiry[] = todayInquiries.map((enquiry: DashboardEnquiry) => ({
+        id: enquiry.id,
+        clientName: enquiry.clientName,
+        mobile: enquiry.mobile,
+        configuration: enquiry.configuration,
+        description: enquiry.description,
+        status: enquiry.status,
+        source: enquiry.source,
+        assignedEmployee: enquiry.assignedEmployee,
+        dateCreated: enquiry.dateCreated,
+        sourceType: 'nfd'
+      }));
+
+      setInquiries(convertedInquiries);
+      setFilteredInquiries(convertedInquiries);
+      setIsLoading(false);
+      console.log('Using inquiries from dashboard:', convertedInquiries.length);
+    } else {
+      // If no inquiries from dashboard, fetch them
+      fetchTodaysInquiries();
+    }
+  }, [todayInquiries]);
 
   // Effect to filter inquiries based on search query
   useEffect(() => {
@@ -95,32 +107,34 @@ export default function TodayInquiries() {
     }
 
     const lowerCaseQuery = searchQuery.toLowerCase();
-    const filtered = inquiries.filter(inquiry => 
+    const filtered = inquiries.filter(inquiry =>
       inquiry.clientName.toLowerCase().includes(lowerCaseQuery) ||
       inquiry.mobile.toLowerCase().includes(lowerCaseQuery) ||
       inquiry.configuration.toLowerCase().includes(lowerCaseQuery) ||
       inquiry.source.toLowerCase().includes(lowerCaseQuery) ||
       inquiry.assignedEmployee.toLowerCase().includes(lowerCaseQuery) ||
-      (inquiry.description && inquiry.description.toLowerCase().includes(lowerCaseQuery)) ||
-      (inquiry.progressType && inquiry.progressType.toLowerCase().includes(lowerCaseQuery)) ||
-      (inquiry.progressRemark && inquiry.progressRemark.toLowerCase().includes(lowerCaseQuery))
+      (inquiry.description && inquiry.description.toLowerCase().includes(lowerCaseQuery))
     );
-    
+
     setFilteredInquiries(filtered);
   }, [searchQuery, inquiries]);
+
+  // Helper function to format date consistently
+  const formatDate = (date: Date): string => {
+    return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
+  };
 
   const fetchTodaysInquiries = async () => {
     try {
       setIsLoading(true);
-      
+
       // Get today's date in DD/MM/YYYY format
       const today = new Date();
-      const formattedDate = `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}/${today.getFullYear()}`;
-      
+      const formattedDate = formatDate(today);
+
       console.log('Fetching today\'s data with date:', formattedDate);
-      
-      // PART 1: Fetch from enquiries table where NFD = today
-      console.log('Fetching from enquiries table where NFD =', formattedDate);
+
+      // Fetch from enquiries table where NFD = today (same as dashboard)
       const { data: nfdData, error: nfdError } = await supabase
         .from('enquiries')
         .select('*')
@@ -129,58 +143,20 @@ export default function TodayInquiries() {
       if (nfdError) throw nfdError;
 
       console.log('Enquiries with NFD = today:', nfdData?.length || 0);
-      
-      // PART 2: Fetch from Inquiry_Progress table where date = today
-      console.log('Fetching from Inquiry_Progress table where date =', formattedDate);
-      const { data: progressData, error: progressError } = await supabase
-        .from('Inquiry_Progress')
-        .select(`
-          id, 
-          eid, 
-          progress_type, 
-          remark, 
-          created_at, 
-          date,
-          enquiries:eid (
-            id,
-            "Client Name",
-            "Mobile",
-            "Email",
-            "Enquiry For",
-            "Property Type",
-            "Assigned To",
-            "Created Date",
-            "Enquiry Progress",
-            "Budget",
-            "NFD",
-            "Favourite",
-            "Near to Win",
-            "Enquiry Source",
-            "Assigned By",
-            "Area",
-            "Configuration",
-            "Last Remarks"
-          )
-        `)
-        .eq('date', formattedDate);
 
-      if (progressError) throw progressError;
-
-      console.log('Inquiry_Progress entries with date = today:', progressData?.length || 0);
-      
       // Ensure nfdData is treated as EnquiryRecord[]
       const typedNfdData = nfdData as EnquiryRecord[];
-      
+
       // Filter out completed or cancelled inquiries from NFD data
       const filteredNfdData = typedNfdData.filter(enquiry => {
         const status = (enquiry["Enquiry Progress"] || '').toLowerCase();
         return !status.includes('done') && !status.includes('cancelled');
       });
-      
+
       console.log('NFD enquiries after status filtering:', filteredNfdData.length);
-      
-      // Transform the NFD data to match our Inquiry type
-      const nfdTransformedData: Inquiry[] = filteredNfdData.map(enquiry => ({
+
+      // Transform the NFD data to match our Inquiry type (using the same logic as dashboard)
+      const transformedData: Inquiry[] = filteredNfdData.map(enquiry => ({
         id: enquiry.id,
         clientName: enquiry["Client Name"] || 'Unknown Client',
         mobile: enquiry.Mobile || '',
@@ -192,58 +168,10 @@ export default function TodayInquiries() {
         dateCreated: enquiry["Created Date"] || new Date().toISOString(),
         sourceType: 'nfd'
       }));
-      
-      // Ensure progressData is treated as ProgressRecord[] using a type assertion through unknown
-      const typedProgressData = progressData as unknown as ProgressRecord[];
-      
-      // Transform the Progress data to match our Inquiry type
-      const progressTransformedData: Inquiry[] = typedProgressData
-        .filter(progress => progress.enquiries) // Only include progress entries with valid enquiry relation
-        .map(progress => {
-          // Use a type assertion to handle the enquiries structure
-          const enquiry = progress.enquiries as EnquiryRecord;
-          return {
-            id: enquiry.id,
-            clientName: enquiry["Client Name"] || 'Unknown Client',
-            mobile: enquiry.Mobile || '',
-            configuration: enquiry.Configuration || '',
-            description: progress.remark || enquiry["Last Remarks"] || '',
-            status: enquiry["Enquiry Progress"] || 'Unknown',
-            source: enquiry["Enquiry Source"] || 'Unknown',
-            assignedEmployee: enquiry["Assigned To"] || '',
-            dateCreated: enquiry["Created Date"] || new Date().toISOString(),
-            sourceType: 'progress',
-            progressType: progress.progress_type,
-            progressRemark: progress.remark,
-            progressDate: progress.date,
-            eid: progress.eid
-          };
-        });
-      
-      console.log('Transformed progress data entries:', progressTransformedData.length);
-      
-      // Combine both data sources, avoiding duplicates by ID
-      const combinedInquiries = [...nfdTransformedData];
-      
-      // Add progress entries that aren't already in the list (checking by ID)
-      for (const progressInquiry of progressTransformedData) {
-        if (!combinedInquiries.some(i => i.id === progressInquiry.id)) {
-          combinedInquiries.push(progressInquiry);
-        } else {
-          // If the inquiry is already in the list, add progress information to it
-          const existingInquiry = combinedInquiries.find(i => i.id === progressInquiry.id);
-          if (existingInquiry) {
-            existingInquiry.progressType = progressInquiry.progressType;
-            existingInquiry.progressRemark = progressInquiry.progressRemark;
-            existingInquiry.progressDate = progressInquiry.progressDate;
-            existingInquiry.sourceType = 'both'; // Mark as coming from both sources
-          }
-        }
-      }
-      
-      console.log('Total combined today\'s inquiries:', combinedInquiries.length);
-      setInquiries(combinedInquiries);
-      setFilteredInquiries(combinedInquiries);
+
+      console.log('Total today\'s inquiries:', transformedData.length);
+      setInquiries(transformedData);
+      setFilteredInquiries(transformedData);
     } catch (error) {
       console.error('Error fetching today\'s inquiries:', error);
     } finally {
@@ -261,7 +189,7 @@ export default function TodayInquiries() {
       <div className="relative mb-16">
         <div className="absolute inset-0 bg-gradient-to-r from-[#1a2e29]/90 to-[#264a42]/90 rounded-2xl -z-10"></div>
         <div className="absolute inset-0 bg-[url('/hero-pattern.svg')] opacity-10 mix-blend-overlay rounded-2xl -z-10"></div>
-        
+
         <div className="relative py-12 px-8 text-white">
           <div className="flex flex-col md:flex-row md:items-center justify-between mb-6">
             <div>
@@ -270,11 +198,11 @@ export default function TodayInquiries() {
                 {inquiries.length} Inquiries
               </div>
               <p className="text-[#e5d0b1] max-w-2xl mt-2">
-                All inquiries scheduled for today, including NFD and progress activities
+                All inquiries scheduled for today with Next Follow-up Date (NFD) set to today
               </p>
             </div>
-            <Link 
-              href="/" 
+            <Link
+              href="/"
               className="mt-4 md:mt-0 flex items-center gap-2 bg-white/10 backdrop-blur-sm text-white px-4 py-2 rounded-lg hover:bg-white/20 transition-all self-start"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -283,12 +211,12 @@ export default function TodayInquiries() {
               Back to Dashboard
             </Link>
           </div>
-          
+
           {/* Search Bar */}
           <div className="mt-4">
-            <SearchBar 
-              onSearch={handleSearch} 
-              placeholder="Search by client name, phone number, or configuration..." 
+            <SearchBar
+              onSearch={handleSearch}
+              placeholder="Search by client name, phone number, or configuration..."
               defaultValue={searchQuery}
             />
           </div>
@@ -310,7 +238,7 @@ export default function TodayInquiries() {
             </div>
           </div>
         </div>
-        
+
         <div className="overflow-x-auto">
           {isLoading ? (
             <div className="flex justify-center items-center py-16">
@@ -333,7 +261,7 @@ export default function TodayInquiries() {
               <tbody>
                 {filteredInquiries.length > 0 ? (
                   filteredInquiries.map(inquiry => (
-                    <tr key={`${inquiry.id}-${inquiry.sourceType}`}>
+                    <tr key={inquiry.id}>
                       <td>
                         <div className="flex items-center gap-3">
                           <div className="flex items-center gap-1">
@@ -388,11 +316,6 @@ export default function TodayInquiries() {
                       <td>
                         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-[#1a2e29]/10 dark:bg-[#c69c6d]/10 text-[#1a2e29] dark:text-[#c69c6d]">
                           {inquiry.source}
-                          {inquiry.sourceType && (
-                            <span className="ml-1 text-[10px] bg-gray-200 dark:bg-gray-700 px-1 rounded">
-                              {inquiry.sourceType}
-                            </span>
-                          )}
                         </div>
                       </td>
                       <td>
@@ -403,20 +326,15 @@ export default function TodayInquiries() {
                       <td>
                         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-[#1a2e29]/10 dark:bg-[#c69c6d]/10 text-[#1a2e29] dark:text-[#c69c6d]">
                           {inquiry.status}
-                          {inquiry.progressType && (
-                            <span className="ml-1 text-[10px] bg-gray-200 dark:bg-gray-700 px-1 rounded">
-                              {inquiry.progressType.replace(/_/g, ' ')}
-                            </span>
-                          )}
                         </div>
                       </td>
                       <td>
-                        {inquiry.progressDate || '-'}
+                        {'-'}
                       </td>
                       <td>
                         <div className="max-w-[200px]">
                           <div className="text-sm text-gray-600 dark:text-gray-400 truncate">
-                            {inquiry.progressRemark || inquiry.description || 'No remarks yet'}
+                            {inquiry.description || 'No remarks yet'}
                           </div>
                         </div>
                       </td>
@@ -445,4 +363,4 @@ export default function TodayInquiries() {
       </div>
     </div>
   );
-} 
+}
