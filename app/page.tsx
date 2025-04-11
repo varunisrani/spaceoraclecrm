@@ -266,29 +266,63 @@ export default function Home() {
       // Get current date
       const today = new Date();
       today.setHours(0, 0, 0, 0); // Set to start of day for comparison
+      const todayFormatted = `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}/${today.getFullYear()}`;
+      
+      // Parse today's date for comparison
+      const [todayDay, todayMonth, todayYear] = todayFormatted.split('/').map(Number);
+      
+      // Create Date object for today (with time set to midnight)
+      const todayDate = new Date(todayYear, todayMonth - 1, todayDay);
 
       console.log('Fetching due inquiries (before today)');
-
+      
+      // Get inquiry IDs from the Inquiry_Progress table that have "deal_lost" progress type
+      const { data: dealLostData, error: dealLostError } = await supabase
+        .from('Inquiry_Progress')
+        .select('eid')
+        .eq('progress_type', 'deal_lost');
+        
+      if (dealLostError) {
+        console.error('Error fetching deal_lost entries from Inquiry_Progress table:', dealLostError);
+        throw dealLostError;
+      }
+      
+      // Extract the eids (inquiry ids) that have deal_lost progress entries
+      const dealLostInquiryIds = new Set(dealLostData.map(item => item.eid));
+      console.log('Inquiries with deal_lost progress to exclude from due inquiries:', dealLostInquiryIds.size);
+      
       // Fetch all enquiries
-      const { data, error } = await supabase
+      let enquiriesQuery = supabase
         .from('enquiries')
         .select('*');
+        
+      // Exclude inquiries with deal_lost progress if there are any
+      if (dealLostInquiryIds.size > 0) {
+        const dealLostArray = Array.from(dealLostInquiryIds);
+        enquiriesQuery = enquiriesQuery.not('id', 'in', `(${dealLostArray.join(',')})`);
+      }
+      
+      const { data, error } = await enquiriesQuery;
 
       if (error) throw error;
 
-      // Filter inquiries where NFD is earlier than today
+      // Filter inquiries using ONLY the NFD logic:
+      // NFD is earlier than today (not including today)
       const filteredData = (data || []).filter(enquiry => {
         // Skip if no NFD
         if (!enquiry.NFD) return false;
 
         // Parse the NFD date
-        const nfdDate = parseDate(enquiry.NFD);
-
-        // If can't parse or date is invalid, skip
-        if (!nfdDate) return false;
-
+        const [day, month, year] = enquiry.NFD.split('/').map(Number);
+        
+        // Check if this is a valid date
+        if (isNaN(day) || isNaN(month) || isNaN(year)) return false;
+        
+        // Create Date object for NFD (with time set to midnight)
+        const nfdDate = new Date(year, month - 1, day);
+        
         // The only condition: NFD is earlier than today
-        return nfdDate < today;
+        return nfdDate < todayDate;
       });
 
       console.log('Due enquiries (NFD earlier than today):', filteredData.length);
