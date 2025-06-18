@@ -18,7 +18,7 @@ export default function NewEnquiry() {
     "Enquiry Progress": 'New', // Default status
     "Remarks": '',
     "Enquiry Source": 'Facebook', // Default source
-    "Area": 'bhopal',
+    "Area": 'Bhopal',
     "Configuration": '',
     "Created Date": new Date().toISOString()
   });
@@ -161,6 +161,7 @@ export default function NewEnquiry() {
                 >
                   <option value="Facebook">Facebook</option>
                   <option value="Reference">Reference</option>
+                  <option value="Housing">Housing</option>
                 </select>
               </div>
             </div>
@@ -170,15 +171,16 @@ export default function NewEnquiry() {
               <label htmlFor="Area" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Area
               </label>
-              <input
-                type="text"
+              <select
                 id="Area"
                 name="Area"
                 value={formData["Area"]}
                 onChange={handleChange}
                 className="premium-input w-full text-base"
-                placeholder="Enter area name"
-              />
+              >
+                <option value="Bhopal">Bhopal</option>
+                <option value="Vaishnodevi">Vaishnodevi</option>
+              </select>
             </div>
 
             {/* Description */}
