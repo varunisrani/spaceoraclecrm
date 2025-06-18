@@ -71,6 +71,7 @@ export default function TodayInquiries() {
   const [filteredInquiries, setFilteredInquiries] = useState<Inquiry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [assignedToFilter, setAssignedToFilter] = useState<string>('');
 
   useEffect(() => {
     // If we have inquiries from the dashboard, use those
@@ -99,25 +100,32 @@ export default function TodayInquiries() {
     }
   }, [todayInquiries]);
 
-  // Effect to filter inquiries based on search query
+  // Effect to filter inquiries based on search query and assigned to filter
   useEffect(() => {
-    if (!searchQuery.trim()) {
-      setFilteredInquiries(inquiries);
-      return;
+    let filtered = inquiries;
+
+    // Apply search query filter
+    if (searchQuery.trim()) {
+      const lowerCaseQuery = searchQuery.toLowerCase();
+      filtered = filtered.filter(inquiry =>
+        inquiry.clientName.toLowerCase().includes(lowerCaseQuery) ||
+        inquiry.mobile.toLowerCase().includes(lowerCaseQuery) ||
+        inquiry.configuration.toLowerCase().includes(lowerCaseQuery) ||
+        inquiry.source.toLowerCase().includes(lowerCaseQuery) ||
+        inquiry.assignedEmployee.toLowerCase().includes(lowerCaseQuery) ||
+        (inquiry.description && inquiry.description.toLowerCase().includes(lowerCaseQuery))
+      );
+    }
+    
+    // Apply assigned to filter
+    if (assignedToFilter) {
+      filtered = filtered.filter(inquiry => 
+        inquiry.assignedEmployee.toLowerCase() === assignedToFilter.toLowerCase()
+      );
     }
 
-    const lowerCaseQuery = searchQuery.toLowerCase();
-    const filtered = inquiries.filter(inquiry =>
-      inquiry.clientName.toLowerCase().includes(lowerCaseQuery) ||
-      inquiry.mobile.toLowerCase().includes(lowerCaseQuery) ||
-      inquiry.configuration.toLowerCase().includes(lowerCaseQuery) ||
-      inquiry.source.toLowerCase().includes(lowerCaseQuery) ||
-      inquiry.assignedEmployee.toLowerCase().includes(lowerCaseQuery) ||
-      (inquiry.description && inquiry.description.toLowerCase().includes(lowerCaseQuery))
-    );
-
     setFilteredInquiries(filtered);
-  }, [searchQuery, inquiries]);
+  }, [searchQuery, assignedToFilter, inquiries]);
 
   // Helper function to format date consistently
   const formatDate = (date: Date): string => {
@@ -183,6 +191,10 @@ export default function TodayInquiries() {
     setSearchQuery(query);
   };
 
+  const handleAssignedToFilter = (assignedTo: string) => {
+    setAssignedToFilter(assignedTo === assignedToFilter ? '' : assignedTo);
+  };
+
   return (
     <div className="fade-in">
       {/* Hero Section */}
@@ -220,6 +232,37 @@ export default function TodayInquiries() {
               defaultValue={searchQuery}
             />
           </div>
+          
+          {/* Assigned To Filter */}
+          <div className="mt-4">
+            <div className="text-sm font-medium mb-2">Filter by Assigned To:</div>
+            <div className="flex flex-wrap gap-2">
+              {["Maulik, Jadav", "Rushirajsinh, Zala", "Rajdeepsinh, Jadeja"].map((name) => (
+                <button
+                  key={name}
+                  onClick={() => handleAssignedToFilter(name)}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                    assignedToFilter === name 
+                      ? 'bg-[#c69c6d] text-white' 
+                      : 'bg-white/10 text-white hover:bg-white/20'
+                  }`}
+                >
+                  {name}
+                </button>
+              ))}
+              {assignedToFilter && (
+                <button
+                  onClick={() => setAssignedToFilter('')}
+                  className="px-3 py-1.5 rounded-lg text-sm font-medium bg-red-500/20 text-white hover:bg-red-500/30 transition-colors flex items-center gap-1"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                  </svg>
+                  Clear Filter
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -234,6 +277,7 @@ export default function TodayInquiries() {
             <div className="flex items-center gap-2">
               <span className="text-sm text-gray-600 dark:text-gray-400">
                 Showing {filteredInquiries.length} of {inquiries.length} inquiries
+                {assignedToFilter && <span> (Filtered by: {assignedToFilter})</span>}
               </span>
             </div>
           </div>
