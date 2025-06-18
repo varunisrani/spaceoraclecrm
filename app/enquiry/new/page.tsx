@@ -18,7 +18,7 @@ export default function NewEnquiry() {
     "Enquiry Progress": 'New', // Default status
     "Remarks": '',
     "Enquiry Source": 'Facebook', // Default source
-    "Area": 'Bhopal',
+    "Area": 'Bopal',
     "Configuration": '',
     "Created Date": new Date().toISOString()
   });
@@ -178,7 +178,7 @@ export default function NewEnquiry() {
                 onChange={handleChange}
                 className="premium-input w-full text-base"
               >
-                <option value="Bhopal">Bhopal</option>
+                <option value="Bopal">Bopal</option>
                 <option value="Vaishnodevi">Vaishnodevi</option>
               </select>
             </div>
