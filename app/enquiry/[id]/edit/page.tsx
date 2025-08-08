@@ -196,6 +196,7 @@ export default function EditEnquiry() {
                 >
                   <option value="Facebook">Facebook</option>
                   <option value="Reference">Reference</option>
+                  <option value="Housing">Housing</option>
                 </select>
               </div>
             </div>

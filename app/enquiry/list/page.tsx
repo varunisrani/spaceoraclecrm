@@ -387,6 +387,7 @@ export default function EnquiryList() {
                 <option value="ALL">All Sources</option>
                 <option value="Facebook">Facebook</option>
                 <option value="Reference">Reference</option>
+                <option value="Housing">Housing</option>
               </select>
               <div className="absolute right-3 top-[34px] pointer-events-none">
                 <svg className="h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
