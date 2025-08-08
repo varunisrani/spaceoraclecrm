@@ -49,6 +49,24 @@ const getPhoneCallUrl = (mobile: string): string => {
   return `tel:${numberWithCountryCode}`;
 };
 
+// Fetch unique inquiry IDs that have a 'deal_done' progress entry
+const fetchDealDoneInquiryIds = async (): Promise<(string | number)[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('Inquiry_Progress')
+      .select('eid')
+      .eq('progress_type', 'deal_done');
+
+    if (error) throw error;
+
+    const ids = (data || []).map((row: any) => row.eid);
+    return Array.from(new Set(ids));
+  } catch (err) {
+    console.error("Error fetching deal_done inquiry IDs:", err);
+    return [];
+  }
+};
+
 export default function YesterdayInquiries() {
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [filteredInquiries, setFilteredInquiries] = useState<Inquiry[]>([]);
@@ -91,16 +109,26 @@ export default function YesterdayInquiries() {
       const yesterdayFormatted = `${String(yesterday.getDate()).padStart(2, '0')}/${String(yesterday.getMonth() + 1).padStart(2, '0')}/${yesterday.getFullYear()}`;
       
       console.log('Fetching yesterday\'s inquiries for date:', yesterdayFormatted);
+
+      // Fetch all 'deal_done' inquiry IDs to exclude
+      const dealDoneIds = await fetchDealDoneInquiryIds();
       
       // Fetch inquiries where NFD is yesterday
-      const { data, error } = await supabase
+      let query = supabase
         .from('enquiries')
         .select('*')
         .eq('NFD', yesterdayFormatted);
 
+      // Exclude inquiries that are marked as deal_done via progress
+      if (dealDoneIds.length > 0) {
+        query = query.not('id', 'in', `(${dealDoneIds.join(',')})`);
+      }
+
+      const { data, error } = await query;
+
       if (error) throw error;
       
-      console.log('Yesterday\'s inquiries fetched:', data?.length || 0);
+      console.log('Yesterday\'s inquiries fetched (pre-status filter):', data?.length || 0);
       
       // Filter out completed or cancelled inquiries
       const filteredData = data.filter(enquiry => {
@@ -125,7 +153,7 @@ export default function YesterdayInquiries() {
         nfd: enquiry.NFD || ''
       }));
       
-      console.log('Transformed yesterday\'s inquiries:', transformedData.length);
+      console.log('Transformed yesterday\'s inquiries (after excluding deal_done):', transformedData.length);
       setInquiries(transformedData);
       setFilteredInquiries(transformedData);
     } catch (error) {

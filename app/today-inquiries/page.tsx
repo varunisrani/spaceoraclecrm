@@ -65,6 +65,24 @@ const getPhoneCallUrl = (mobile: string): string => {
   return `tel:${numberWithCountryCode}`;
 };
 
+// Fetch unique inquiry IDs that have a 'deal_done' progress entry
+const fetchDealDoneInquiryIds = async (): Promise<(string | number)[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('Inquiry_Progress')
+      .select('eid')
+      .eq('progress_type', 'deal_done');
+
+    if (error) throw error;
+
+    const ids = (data || []).map((row: any) => row.eid);
+    return Array.from(new Set(ids));
+  } catch (err) {
+    console.error("Error fetching deal_done inquiry IDs:", err);
+    return [];
+  }
+};
+
 export default function TodayInquiries() {
   const { todayInquiries } = useInquiryStore();
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
@@ -74,30 +92,38 @@ export default function TodayInquiries() {
   const [assignedToFilter, setAssignedToFilter] = useState<string>('');
 
   useEffect(() => {
-    // If we have inquiries from the dashboard, use those
-    if (todayInquiries.length > 0) {
-      // Convert dashboard Enquiry type to our local Inquiry type
-      const convertedInquiries: Inquiry[] = todayInquiries.map((enquiry: DashboardEnquiry) => ({
-        id: enquiry.id,
-        clientName: enquiry.clientName,
-        mobile: enquiry.mobile,
-        configuration: enquiry.configuration,
-        description: enquiry.description,
-        status: enquiry.status,
-        source: enquiry.source,
-        assignedEmployee: enquiry.assignedEmployee,
-        dateCreated: enquiry.dateCreated,
-        sourceType: 'nfd'
-      }));
+    // If we have inquiries from the dashboard, use those but exclude any with deal_done progress
+    const loadFromStore = async () => {
+      if (todayInquiries.length > 0) {
+        setIsLoading(true);
+        const dealDoneIds = await fetchDealDoneInquiryIds();
+        const dealDoneIdSet = new Set(dealDoneIds.map(String));
 
-      setInquiries(convertedInquiries);
-      setFilteredInquiries(convertedInquiries);
-      setIsLoading(false);
-      console.log('Using inquiries from dashboard:', convertedInquiries.length);
-    } else {
-      // If no inquiries from dashboard, fetch them
-      fetchTodaysInquiries();
-    }
+        // Convert dashboard Enquiry type to our local Inquiry type
+        const convertedInquiries: Inquiry[] = todayInquiries.map((enquiry: DashboardEnquiry) => ({
+          id: enquiry.id,
+          clientName: enquiry.clientName,
+          mobile: enquiry.mobile,
+          configuration: enquiry.configuration,
+          description: enquiry.description,
+          status: enquiry.status,
+          source: enquiry.source,
+          assignedEmployee: enquiry.assignedEmployee,
+          dateCreated: enquiry.dateCreated,
+          sourceType: 'nfd'
+        })).filter((inq) => !dealDoneIdSet.has(String(inq.id)));
+
+        setInquiries(convertedInquiries);
+        setFilteredInquiries(convertedInquiries);
+        setIsLoading(false);
+        console.log('Using inquiries from dashboard (after excluding deal_done):', convertedInquiries.length);
+      } else {
+        // If no inquiries from dashboard, fetch them
+        fetchTodaysInquiries();
+      }
+    };
+
+    loadFromStore();
   }, [todayInquiries]);
 
   // Effect to filter inquiries based on search query and assigned to filter
@@ -142,15 +168,25 @@ export default function TodayInquiries() {
 
       console.log('Fetching today\'s data with date:', formattedDate);
 
+      // Fetch all 'deal_done' inquiry IDs to exclude
+      const dealDoneIds = await fetchDealDoneInquiryIds();
+
       // Fetch from enquiries table where NFD = today (same as dashboard)
-      const { data: nfdData, error: nfdError } = await supabase
+      let query = supabase
         .from('enquiries')
         .select('*')
         .eq('NFD', formattedDate);
 
+      // Exclude inquiries that are marked as deal_done via progress
+      if (dealDoneIds.length > 0) {
+        query = query.not('id', 'in', `(${dealDoneIds.join(',')})`);
+      }
+
+      const { data: nfdData, error: nfdError } = await query;
+
       if (nfdError) throw nfdError;
 
-      console.log('Enquiries with NFD = today:', nfdData?.length || 0);
+      console.log('Enquiries with NFD = today (pre-status filter):', nfdData?.length || 0);
 
       // Ensure nfdData is treated as EnquiryRecord[]
       const typedNfdData = nfdData as EnquiryRecord[];
@@ -177,7 +213,7 @@ export default function TodayInquiries() {
         sourceType: 'nfd'
       }));
 
-      console.log('Total today\'s inquiries:', transformedData.length);
+      console.log('Total today\'s inquiries (after excluding deal_done):', transformedData.length);
       setInquiries(transformedData);
       setFilteredInquiries(transformedData);
     } catch (error) {

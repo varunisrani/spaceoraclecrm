@@ -73,6 +73,24 @@ const getPhoneCallUrl = (mobile: string): string => {
   return `tel:${numberWithCountryCode}`;
 };
 
+// Fetch unique inquiry IDs that have a 'deal_done' progress entry
+const fetchDealDoneInquiryIds = async (): Promise<(string | number)[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('Inquiry_Progress')
+      .select('eid')
+      .eq('progress_type', 'deal_done');
+
+    if (error) throw error;
+
+    const ids = (data || []).map((row: any) => row.eid);
+    return Array.from(new Set(ids));
+  } catch (err) {
+    console.error("Error fetching deal_done inquiry IDs:", err);
+    return [];
+  }
+};
+
 export default function NewInquiries() {
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [filteredInquiries, setFilteredInquiries] = useState<Inquiry[]>([]);
@@ -123,6 +141,9 @@ export default function NewInquiries() {
       // Extract the eids (inquiry ids) that have progress entries
       const inquiryIdsWithProgress = progressData.map(item => item.eid);
       console.log('Inquiries with progress entries:', inquiryIdsWithProgress.length, inquiryIdsWithProgress);
+
+      // Also get all 'deal_done' inquiry IDs to explicitly exclude
+      const dealDoneIds = await fetchDealDoneInquiryIds();
       
       // Query to get new inquiries EXCLUDING any that have matching IDs in Inquiry_Progress table
       let query = supabase
@@ -134,6 +155,11 @@ export default function NewInquiries() {
       if (inquiryIdsWithProgress.length > 0) {
         // This ensures that any inquiry ID that matches an eid in Inquiry_Progress is excluded
         query = query.not('id', 'in', `(${inquiryIdsWithProgress.join(',')})`);
+      }
+
+      // Explicitly exclude deal_done inquiries as well (redundant safety)
+      if (dealDoneIds.length > 0) {
+        query = query.not('id', 'in', `(${dealDoneIds.join(',')})`);
       }
       
       const { data, error } = await query;
