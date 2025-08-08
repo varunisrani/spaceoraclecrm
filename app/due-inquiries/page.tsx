@@ -73,6 +73,24 @@ const getPhoneCallUrl = (mobile: string): string => {
   return `tel:${numberWithCountryCode}`;
 };
 
+// Fetch unique inquiry IDs that have a 'deal_done' progress entry
+const fetchDealDoneInquiryIds = async (): Promise<(string | number)[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('Inquiry_Progress')
+      .select('eid')
+      .eq('progress_type', 'deal_done');
+
+    if (error) throw error;
+
+    const ids = (data || []).map((row: any) => row.eid);
+    return Array.from(new Set(ids));
+  } catch (err) {
+    console.error("Error fetching deal_done inquiry IDs:", err);
+    return [];
+  }
+};
+
 export default function DueInquiries() {
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [filteredInquiries, setFilteredInquiries] = useState<Inquiry[]>([]);
@@ -143,6 +161,11 @@ export default function DueInquiries() {
       // Extract the eids (inquiry ids) that have deal_lost progress entries
       const dealLostInquiryIds = new Set(dealLostData.map(item => item.eid));
       console.log('Inquiries with deal_lost progress to exclude from due inquiries:', dealLostInquiryIds.size);
+
+      // Get inquiry IDs that have deal_done progress type (exclude from Due page)
+      const dealDoneIds = await fetchDealDoneInquiryIds();
+      const dealDoneIdSet = new Set(dealDoneIds);
+      console.log('Inquiries with deal_done progress to exclude from due inquiries:', dealDoneIdSet.size);
       
       // Fetch all enquiries
       let enquiriesQuery = supabase
@@ -153,6 +176,12 @@ export default function DueInquiries() {
       if (dealLostInquiryIds.size > 0) {
         const dealLostArray = Array.from(dealLostInquiryIds);
         enquiriesQuery = enquiriesQuery.not('id', 'in', `(${dealLostArray.join(',')})`);
+      }
+
+      // Exclude inquiries with deal_done progress as well
+      if (dealDoneIdSet.size > 0) {
+        const dealDoneArray = Array.from(dealDoneIdSet);
+        enquiriesQuery = enquiriesQuery.not('id', 'in', `(${dealDoneArray.join(',')})`);
       }
       
       const { data, error } = await enquiriesQuery;
