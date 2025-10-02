@@ -40,3 +40,13 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .qodo
+
+# Housing.com integration documentation (contains sensitive info)
+HOUSING_INTEGRATION_GUIDE.md
+ENVIRONMENT_SETUP.md
+SECURITY_UPDATES.md
+test-housing-*.js
+test-housing-integration.js
+
+# Claude Code directory
+.claude/

@@ -96,6 +96,7 @@ export default function NewInquiries() {
   const [filteredInquiries, setFilteredInquiries] = useState<Inquiry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [isFetchingHousing, setIsFetchingHousing] = useState(false);
 
   useEffect(() => {
     fetchNewInquiries();
@@ -206,6 +207,124 @@ export default function NewInquiries() {
     setSearchQuery(query);
   };
 
+  const fetchHousingLeads = async () => {
+    console.log('🚀 Starting Housing.com lead fetch process...');
+    console.log('==========================================');
+    
+    setIsFetchingHousing(true);
+    
+    try {
+      // First check debug endpoint
+      console.log('🔍 Step 0: Checking configuration...');
+      const debugResponse = await fetch('/api/housing/debug');
+      const debugData = await debugResponse.json();
+      console.log('   Configuration status:', debugData);
+      
+      if (!debugData.configStatus.valid) {
+        throw new Error('Housing API configuration is not valid. Check environment variables.');
+      }
+      
+      console.log('📡 Step 1: Calling Housing API sync endpoint...');
+      console.log('   Endpoint: /api/housing/sync');
+      console.log('   Method: GET');
+      console.log('   Time:', new Date().toISOString());
+      
+      const response = await fetch('/api/housing/sync');
+      
+      console.log('📥 Step 2: Received response from API');
+      console.log('   Status:', response.status);
+      console.log('   Status Text:', response.statusText);
+      console.log('   Headers:', Object.fromEntries(response.headers.entries()));
+      
+      const data = await response.json();
+      
+      console.log('📊 Step 3: Parsed response data');
+      console.log('   Success:', data.success);
+      console.log('   Message:', data.message);
+      
+      if (data.stats) {
+        console.log('📈 Step 4: Sync Statistics');
+        console.log('   Total Fetched from Housing API:', data.stats.fetched);
+        console.log('   New Leads Inserted:', data.stats.inserted);
+        console.log('   Duplicate Leads Skipped:', data.stats.skipped);
+        console.log('   Errors Encountered:', data.stats.errors);
+      }
+      
+      if (data.details && Array.isArray(data.details)) {
+        console.log('📋 Step 5: Lead Processing Details');
+        data.details.forEach((detail: any, index: number) => {
+          console.log(`   Lead ${index + 1}:`);
+          console.log(`     - Name: ${detail.lead?.clientName || 'N/A'}`);
+          console.log(`     - Mobile: ${detail.lead?.mobile || 'N/A'}`);
+          console.log(`     - Status: ${detail.status}`);
+          if (detail.error) {
+            console.log(`     - Error: ${detail.error}`);
+          }
+        });
+      }
+      
+      if (data.success) {
+        console.log('✅ Step 6: Sync completed successfully!');
+        
+        // Show success alert with testing note
+        if (data.stats) {
+          let alertMessage = `Housing API Test Results:\n\n` +
+            `📥 Fetched: ${data.stats.fetched} leads from Housing.com\n`;
+          
+          if (data.message.includes('TEST MODE')) {
+            alertMessage += `\n⚠️ TEST MODE: Leads fetched but NOT saved to database\n`;
+            
+            // Show first few leads for verification
+            if (data.details && data.details.length > 0) {
+              alertMessage += `\n📋 Sample Leads:\n`;
+              data.details.slice(0, 3).forEach((detail: any, index: number) => {
+                alertMessage += `${index + 1}. ${detail.lead?.clientName || 'N/A'} - ${detail.lead?.mobile || 'N/A'}\n`;
+              });
+              if (data.details.length > 3) {
+                alertMessage += `   ... and ${data.details.length - 3} more\n`;
+              }
+            }
+          } else {
+            alertMessage += `✅ Inserted: ${data.stats.inserted} new leads\n` +
+              `⏭️ Skipped: ${data.stats.skipped} duplicates\n` +
+              `❌ Errors: ${data.stats.errors}`;
+          }
+          
+          alert(alertMessage);
+        } else {
+          alert('Housing leads fetch completed successfully!');
+        }
+        
+        console.log('🔄 Step 7: Test complete - No database refresh needed in test mode');
+        // Don't refresh in test mode since nothing was inserted
+        if (!data.message.includes('TEST MODE')) {
+          await fetchNewInquiries();
+          console.log('✨ Step 8: Inquiry list refreshed successfully!');
+        }
+        
+      } else {
+        console.error('❌ Step 6: Sync failed');
+        console.error('   Error Message:', data.message);
+        if (data.error) {
+          console.error('   Error Details:', data.error);
+        }
+        alert(`Failed to fetch Housing leads:\n${data.message}`);
+      }
+      
+    } catch (error) {
+      console.error('💥 Critical Error in Housing lead fetch:');
+      console.error('   Error Type:', error instanceof Error ? error.constructor.name : typeof error);
+      console.error('   Error Message:', error instanceof Error ? error.message : String(error));
+      console.error('   Stack Trace:', error instanceof Error ? error.stack : 'N/A');
+      
+      alert('Error fetching Housing leads. Check console for details.');
+    } finally {
+      console.log('🏁 Housing lead fetch process completed');
+      console.log('==========================================');
+      setIsFetchingHousing(false);
+    }
+  };
+
   return (
     <div className="fade-in">
       {/* Hero Section */}
@@ -224,15 +343,43 @@ export default function NewInquiries() {
                 All recently added inquiries with &apos;New&apos; status
               </p>
             </div>
-            <Link 
-              href="/" 
-              className="mt-4 md:mt-0 flex items-center gap-2 bg-white/10 backdrop-blur-sm text-white px-4 py-2 rounded-lg hover:bg-white/20 transition-all self-start"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
-              </svg>
-              Back to Dashboard
-            </Link>
+            <div className="flex flex-col sm:flex-row gap-3 mt-4 md:mt-0">
+              <button
+                onClick={fetchHousingLeads}
+                disabled={isFetchingHousing}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all self-start font-medium ${
+                  isFetchingHousing 
+                    ? 'bg-gray-400/20 text-gray-300 cursor-not-allowed' 
+                    : 'bg-[#c69c6d]/20 backdrop-blur-sm text-[#f5e6d3] hover:bg-[#c69c6d]/30 border border-[#c69c6d]/30'
+                }`}
+              >
+                {isFetchingHousing ? (
+                  <>
+                    <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>Fetching Leads...</span>
+                  </>
+                ) : (
+                  <>
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
+                    </svg>
+                    <span>Get Latest Leads</span>
+                  </>
+                )}
+              </button>
+              <Link 
+                href="/" 
+                className="flex items-center gap-2 bg-white/10 backdrop-blur-sm text-white px-4 py-2 rounded-lg hover:bg-white/20 transition-all self-start"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
+                </svg>
+                Back to Dashboard
+              </Link>
+            </div>
           </div>
           
           {/* Search Bar */}
