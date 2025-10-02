@@ -97,31 +97,39 @@ export default function NewInquiries() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isFetchingHousing, setIsFetchingHousing] = useState(false);
+  const [filterEmployee, setFilterEmployee] = useState<string>('ALL');
 
   useEffect(() => {
     fetchNewInquiries();
   }, []);
 
-  // Effect to filter inquiries based on search query
+  // Effect to filter inquiries based on search query and employee filter
   useEffect(() => {
-    if (!searchQuery.trim()) {
-      setFilteredInquiries(inquiries);
-      return;
+    let filtered = inquiries;
+
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const lowerCaseQuery = searchQuery.toLowerCase();
+      filtered = filtered.filter(inquiry =>
+        inquiry.clientName.toLowerCase().includes(lowerCaseQuery) ||
+        inquiry.mobile.toLowerCase().includes(lowerCaseQuery) ||
+        inquiry.configuration.toLowerCase().includes(lowerCaseQuery) ||
+        (inquiry.email && inquiry.email.toLowerCase().includes(lowerCaseQuery)) ||
+        inquiry.source.toLowerCase().includes(lowerCaseQuery) ||
+        inquiry.assignedEmployee.toLowerCase().includes(lowerCaseQuery) ||
+        (inquiry.description && inquiry.description.toLowerCase().includes(lowerCaseQuery))
+      );
     }
 
-    const lowerCaseQuery = searchQuery.toLowerCase();
-    const filtered = inquiries.filter(inquiry => 
-      inquiry.clientName.toLowerCase().includes(lowerCaseQuery) ||
-      inquiry.mobile.toLowerCase().includes(lowerCaseQuery) ||
-      inquiry.configuration.toLowerCase().includes(lowerCaseQuery) ||
-      (inquiry.email && inquiry.email.toLowerCase().includes(lowerCaseQuery)) ||
-      inquiry.source.toLowerCase().includes(lowerCaseQuery) ||
-      inquiry.assignedEmployee.toLowerCase().includes(lowerCaseQuery) ||
-      (inquiry.description && inquiry.description.toLowerCase().includes(lowerCaseQuery))
-    );
-    
+    // Filter by employee
+    if (filterEmployee !== 'ALL') {
+      filtered = filtered.filter(inquiry =>
+        inquiry.assignedEmployee === filterEmployee
+      );
+    }
+
     setFilteredInquiries(filtered);
-  }, [searchQuery, inquiries]);
+  }, [searchQuery, inquiries, filterEmployee]);
 
   const fetchNewInquiries = async () => {
     try {
@@ -384,11 +392,54 @@ export default function NewInquiries() {
           
           {/* Search Bar */}
           <div className="mt-4">
-            <SearchBar 
-              onSearch={handleSearch} 
-              placeholder="Search by client name, phone number, or configuration..." 
+            <SearchBar
+              onSearch={handleSearch}
+              placeholder="Search by client name, phone number, or configuration..."
               defaultValue={searchQuery}
             />
+          </div>
+
+          {/* Filters */}
+          <div className="flex flex-col sm:flex-row flex-wrap gap-4 mt-6">
+            {/* Employee Filter */}
+            <div className="relative flex-1 w-full sm:max-w-xs">
+              <label className="block text-sm text-[#e5d0b1] mb-1">Filter by Employee</label>
+              <select
+                className="w-full appearance-none bg-white/10 backdrop-blur-sm text-white px-4 py-2 pr-8 rounded-lg focus:ring-2 focus:ring-[#c69c6d] focus:outline-none"
+                value={filterEmployee}
+                onChange={(e) => {
+                  console.log('Selected employee:', e.target.value);
+                  setFilterEmployee(e.target.value);
+                }}
+              >
+                <option value="ALL">All Employees</option>
+                <option value="Rushirajsinh, Zala">Rushirajsinh, Zala</option>
+                <option value="Maulik, Jadav">Maulik, Jadav</option>
+                <option value="Rajdeepsinh, Jadeja">Rajdeepsinh, Jadeja</option>
+              </select>
+              <div className="absolute right-3 top-[34px] pointer-events-none">
+                <svg className="h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+              </div>
+            </div>
+
+            {/* Filter Stats */}
+            {filterEmployee !== 'ALL' && (
+              <div className="flex items-center sm:items-end w-full sm:w-auto mt-2 sm:mt-0">
+                <button
+                  onClick={() => {
+                    setFilterEmployee('ALL');
+                  }}
+                  className="w-full sm:w-auto text-[#e5d0b1] hover:text-white flex items-center justify-center sm:justify-start gap-1 px-3 py-2 rounded-lg bg-white/10 backdrop-blur-sm transition-colors"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                  </svg>
+                  Clear Filter
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
