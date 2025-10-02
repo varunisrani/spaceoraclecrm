@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { supabase } from '../../utils/supabase';
 import { useSearchParams } from 'next/navigation';
 import React from 'react';
+import HousingLeadsFetcher from '../../components/HousingLeadsFetcher';
 
 interface Enquiry {
   id: number;
@@ -439,7 +440,10 @@ export default function EnquiryList() {
           </div>
         </div>
       </div>
-      
+
+      {/* Housing.com Leads Fetcher */}
+      <HousingLeadsFetcher />
+
       {/* Enquiry Data Table */}
       <div className="premium-card overflow-hidden">
         <div className="p-6 pb-0">

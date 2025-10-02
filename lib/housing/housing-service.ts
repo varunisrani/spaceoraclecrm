@@ -131,7 +131,7 @@ export class HousingService {
   }> {
     try {
       const processedLeads = await this.apiClient.fetchLatestLeads(hoursBack);
-      
+
       if (processedLeads.length === 0) {
         return {
           success: true,
@@ -161,6 +161,35 @@ export class HousingService {
       return {
         success: false,
         message: `Error fetching leads: ${error instanceof Error ? error.message : String(error)}`
+      };
+    }
+  }
+
+  async addLeadsToSupabase(leads: ProcessedLead[]): Promise<{
+    inserted: number;
+    skipped: number;
+    errors: number;
+    details: Array<{ lead: ProcessedLead; status: string; error?: string }>;
+  }> {
+    try {
+      console.log(`[HousingService] Adding ${leads.length} leads to Supabase...`);
+
+      const syncResult = await this.supabaseSync.syncLeads(leads);
+
+      console.log(`[HousingService] Sync result:`, syncResult);
+
+      return syncResult;
+    } catch (error) {
+      console.error('[HousingService] Error adding leads to Supabase:', error);
+      return {
+        inserted: 0,
+        skipped: 0,
+        errors: leads.length,
+        details: leads.map(lead => ({
+          lead,
+          status: 'error',
+          error: error instanceof Error ? error.message : String(error)
+        }))
       };
     }
   }
